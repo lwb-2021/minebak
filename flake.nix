@@ -17,18 +17,27 @@
           extensions = [ "rust-src" "rust-analyzer" ];
         };
         nativeDeps = with pkgs; [
-          
-        ];
+          libxkbcommon
+          wayland
+          libGL
+          vulkan-loader
+        ] ++ (with pkgs.xorg;[
+            libX11
+            libXcursor
+            libXrandr
+            libXi
+          ]);
 
       in {
         devShells.default = pkgs.mkShell {
           buildInputs = [
             rustToolchain
             pkgs.pkg-config
-            
+
           ] ++ nativeDeps;
 
           shellHook = ''
+            export RUST_BACKTRACE=1
             export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath nativeDeps}:$LD_LIBRARY_PATH"
           '';
         };
