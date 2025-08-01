@@ -1,5 +1,5 @@
 {
-  description = "Rust egui application flake";
+  description = "Minebak flake";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -10,7 +10,7 @@
   outputs = { self, nixpkgs, rust-overlay, flake-utils, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        name = "";
+        name = "minebak";
         overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs { inherit system overlays; };
         rustToolchain = pkgs.rust-bin.nightly.latest.default.override {
@@ -51,6 +51,10 @@
           src = ./.;
 
           cargoLock.lockFile = ./Cargo.lock;
+          nativeBuildInputs = with pkgs;[
+            rustToolchain
+            pkg-config
+          ];
 
           buildInputs = nativeDeps;
 
