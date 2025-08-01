@@ -1,8 +1,7 @@
-use std::{env, fmt::format, iter::zip, path::PathBuf, time::Duration};
+use std::{env, path::PathBuf};
 
 use chrono::DateTime;
 use eframe::egui::{self, CornerRadius, Frame, ImageSource, Margin, RichText, panel::Side};
-use log::debug;
 use rfd::FileDialog;
 
 use super::{MineBakApp, Signal};

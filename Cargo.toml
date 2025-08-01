@@ -12,6 +12,7 @@ eframe = "0.32.0"
 egui_extras = { version = "0.32.0", features = ["all_loaders"] }
 log = "0.4.27"
 log4rs = "1.3.0"
+notifica = "3.0.2"
 rfd = "0.15.4"
 ring = "0.17.14"
 ron = "0.10.1"

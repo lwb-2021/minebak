@@ -18,6 +18,7 @@
         };
         nativeDeps = with pkgs; [
           libxkbcommon
+          dbus
           wayland
           libGL
           vulkan-loader

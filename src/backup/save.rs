@@ -177,7 +177,6 @@ impl MinecraftSave {
 
         log::info!("Recovery started");
         let mut start_recovery = false;
-        let mut files: Vec<PathBuf> = Vec::new();
         for item in backups {
             log::debug!("{} {}", item, timestamp);
             if item == timestamp {

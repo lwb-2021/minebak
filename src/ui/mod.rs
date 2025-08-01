@@ -66,7 +66,7 @@ impl MineBakApp {
     pub fn new(config: Arc<RwLock<Config>>, sender: Sender<Signal>, err: Receiver<anyhow::Error>, cc: &CreationContext<'_>) -> Self {
         egui_extras::install_image_loaders(&cc.egui_ctx);
         theming::set_font(cc);
-        let mut app = Self { config, sender, err, states: States::default() };
+        let app = Self { config, sender, err, states: States::default() };
         app
     }
 }

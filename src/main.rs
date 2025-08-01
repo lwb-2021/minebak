@@ -44,26 +44,16 @@ fn main() -> Result<()> {
         config_root
     };
     if !config_path.exists() {
-        fs::create_dir_all(config_path.parent().unwrap())?;
-        let mut default_config = config::Config::default();
-        default_config.duration = Duration::from_hours(1);
-
-        let mut minebak_root = config_path
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .to_path_buf();
-        minebak_root.push("backup");
-        if !minebak_root.exists() {
-            fs::create_dir_all(minebak_root.clone())?;
-        }
-        default_config.backup_root = minebak_root;
-        default_config.save(config_path.clone()).unwrap();
+        new_config(config_path.clone())?;
     }
 
     init_log()?;
-    let mut configuration = config::read_config(config_path.clone())?;
+    let mut res = config::read_config(config_path.clone());
+    if res.is_err() {
+        log::error!("Failed to read config: {:?}", res);
+        res = new_config(config_path.clone());
+    }
+    let mut configuration = res?;
 
     if arg.duration.is_some() {
         configuration.duration = Duration::from_secs(arg.duration.unwrap());
@@ -76,6 +66,7 @@ fn main() -> Result<()> {
         return run_backup(&configuration);
     }
     if arg.run_daemon {
+        // notifica::notify("Minebak已启动", "").unwrap();
         run_daemon(&mut configuration, config_path);
     }
 
@@ -98,9 +89,31 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+fn new_config(config_path: PathBuf) -> Result<config::Config> {
+    log::warn!("Creating new configuration");
+    fs::create_dir_all(config_path.parent().unwrap())?;
+    let mut default_config = config::Config::default();
+    default_config.duration = Duration::from_hours(1);
+
+    let mut minebak_root = config_path
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .to_path_buf();
+    minebak_root.push("backup");
+    if !minebak_root.exists() {
+        fs::create_dir_all(minebak_root.clone())?;
+    }
+    default_config.backup_root = minebak_root;
+    default_config.save(config_path.clone()).unwrap();
+    
+    Ok(default_config)
+}
+
 fn report_err_in_background(err: Error) -> bool {
-    log::error!("TODO: report error");
     log::error!("{}", err);
+    notifica::notify("Minebak：备份出错", "详情请见日志").unwrap();
     Err::<(), anyhow::Error>(err).unwrap();
     true
 }
@@ -127,28 +140,35 @@ fn run_logic(
             match signal {
                 Signal::Rescan => {
                     backup::rescan_instances(&mut configuration.try_write().unwrap())?;
-                },
+                }
                 Signal::Exit => {
                     configuration.read().unwrap().save(config_path.clone())?;
                     break;
-                },
+                }
                 Signal::RunBackup => {
                     run_backup(&configuration.read().unwrap())?;
-                },
+                }
                 Signal::AddInstance {
                     name,
                     path,
                     multimc,
                     version_isolated,
                 } => {
-                    configuration.write().unwrap().instance_roots.push(
-                        MinecraftInstanceRoot::new(name, path, multimc, version_isolated)?
-                    );
+                    configuration
+                        .write()
+                        .unwrap()
+                        .instance_roots
+                        .push(MinecraftInstanceRoot::new(
+                            name,
+                            path,
+                            multimc,
+                            version_isolated,
+                        )?);
                     configuration.read().unwrap().save(config_path.clone())?;
-                },
+                }
                 Signal::Recover { save, timestamp } => {
                     save.recover(configuration.read().unwrap().backup_root.clone(), timestamp)?;
-                },
+                }
                 #[allow(unreachable_patterns)]
                 s => todo!("{:?}", s),
             }
@@ -168,7 +188,6 @@ fn init_log() -> Result<()> {
 
     let std_out_appender = ConsoleAppender::builder().encoder(encoder).build();
 
-    
     #[allow(unused)]
     let level = log::LevelFilter::Info;
 
