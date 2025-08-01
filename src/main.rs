@@ -28,6 +28,7 @@ use log4rs::{
     config::{Appender, Root},
     encode::pattern::PatternEncoder,
 };
+use ui::Signal;
 
 use crate::{backup::run_backup, ui::show_ui};
 
@@ -48,7 +49,12 @@ fn main() -> Result<()> {
         let mut default_config = config::Config::default();
         default_config.duration = Duration::from_hours(1);
 
-        let mut minebak_root = config_path.parent().unwrap().parent().unwrap().to_path_buf();
+        let mut minebak_root = config_path
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .to_path_buf();
         minebak_root.push("backup");
         if !minebak_root.exists() {
             fs::create_dir_all(minebak_root.clone())?;
@@ -75,7 +81,9 @@ fn main() -> Result<()> {
 
     if arg.run_backup {
         let _ = rescan_instances(&mut configuration).is_err_and(report_err_in_background);
-        let _ = configuration.save(config_path).is_err_and(report_err_in_background);
+        let _ = configuration
+            .save(config_path)
+            .is_err_and(report_err_in_background);
         return run_backup(&configuration);
     }
     if arg.run_daemon {
@@ -101,7 +109,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn report_err_in_background(err: Error) -> bool{
+fn report_err_in_background(err: Error) -> bool {
     log::error!("TODO: report error");
     Err::<(), anyhow::Error>(err).unwrap();
     true
@@ -111,7 +119,9 @@ fn report_err_in_background(err: Error) -> bool{
 fn run_daemon(configuration: &mut config::Config, config_path: PathBuf) -> ! {
     loop {
         rescan_instances(configuration).is_err_and(report_err_in_background);
-        configuration.save(config_path.clone()).is_err_and(report_err_in_background);
+        configuration
+            .save(config_path.clone())
+            .is_err_and(report_err_in_background);
         run_backup(&configuration).is_err_and(report_err_in_background);
         thread::sleep(configuration.duration);
     }
@@ -119,20 +129,34 @@ fn run_daemon(configuration: &mut config::Config, config_path: PathBuf) -> ! {
 
 fn run_logic(
     configuration: Arc<RwLock<config::Config>>,
-    receiver: Receiver<u8>,
+    receiver: Receiver<Signal>,
     config_path: PathBuf,
 ) -> Result<()> {
     loop {
         if let Result::Ok(signal) = receiver.recv_timeout(Duration::from_secs(1)) {
             match signal {
-                0 => {
+                Signal::Rescan => {
                     backup::rescan_instances(&mut configuration.try_write().unwrap())?;
                 }
-                255 => {
-                    configuration.read().unwrap().save(config_path)?;
+                Signal::Exit => {
+                    configuration.read().unwrap().save(config_path.clone())?;
                     break;
                 }
-                s => panic!("unsupported signal {}", s),
+                Signal::RunBackup => {
+                    run_backup(&configuration.read().unwrap())?;
+                }
+                Signal::AddInstance {
+                    name,
+                    path,
+                    multimc,
+                    version_isolated,
+                } => {
+                    configuration.write().unwrap().instance_roots.push(
+                        MinecraftInstanceRoot::new(name, path, multimc, version_isolated)?
+                    );
+                    configuration.read().unwrap().save(config_path.clone())?;
+                }
+                s => todo!("{:?}", s),
             }
         }
     }

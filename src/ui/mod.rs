@@ -1,14 +1,36 @@
 mod components;
 mod theming;
 
-use std::{sync::{mpsc::{Receiver, Sender}, Arc, RwLock}};
+use std::{path::PathBuf, sync::{mpsc::{Receiver, Sender}, Arc, RwLock}};
 
 use crate::{config::Config};
 
 use anyhow::Result;
 use eframe::{run_native, App, CreationContext, NativeOptions};
 
-pub fn show_ui(config: Arc<RwLock<Config>>, sender: Sender<u8>, err: Receiver<anyhow::Error>) -> Result<()>{
+#[derive(Debug, Clone)]
+pub enum Signal {
+    Rescan,
+    RunBackup,
+    AddInstance {
+        name: String,
+        path: PathBuf,
+        multimc: bool,
+        version_isolated: bool
+    },
+    Recover(),
+    Exit
+}
+
+#[derive(Debug, Default)]
+pub struct States {
+    window_add_save_show: bool,
+    add_save_window_error_message: String,
+    add_save_window_path_input: String,
+    add_save_window_name_input: String,
+}
+
+pub fn show_ui(config: Arc<RwLock<Config>>, sender: Sender<Signal>, err: Receiver<anyhow::Error>) -> Result<()>{
 
     let native_options = NativeOptions { 
         ..Default::default()
@@ -24,22 +46,24 @@ pub fn show_ui(config: Arc<RwLock<Config>>, sender: Sender<u8>, err: Receiver<an
 
 pub struct MineBakApp{
     config: Arc<RwLock<Config>>,
-    sender: Sender<u8>,
+    sender: Sender<Signal>,
+    states: States,
     err: Receiver<anyhow::Error>,
 }
 
 impl MineBakApp {
-    pub fn new(config: Arc<RwLock<Config>>, sender: Sender<u8>, err: Receiver<anyhow::Error>, cc: &CreationContext<'_>) -> Self {
+    pub fn new(config: Arc<RwLock<Config>>, sender: Sender<Signal>, err: Receiver<anyhow::Error>, cc: &CreationContext<'_>) -> Self {
         theming::set_font(cc);
-        Self { config, sender, err }
+        let mut app = Self { config, sender, err, states: States::default() };
+        app
     }
 }
 
 impl App for MineBakApp{
     fn update(&mut self, ctx: &eframe::egui::Context, frame: &mut eframe::Frame) {
-        components::draw_ui(ctx, &self.config, &self.sender, &self.err);
+        components::draw_ui(ctx, self);
     }
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
-        self.sender.send(255).unwrap();
+        self.sender.send(Signal::Exit).unwrap();
     }
 }

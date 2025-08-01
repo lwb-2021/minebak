@@ -14,12 +14,13 @@ use std::{
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MinecraftSave {
+    pub instance_name: String,
     pub name: String,
     path: PathBuf,
 }
 
 impl MinecraftSave {
-    pub fn search_instance(path: PathBuf) -> Result<Vec<Self>> {
+    pub fn search_instance(path: PathBuf, instance_name: String) -> Result<Vec<Self>> {
         let mut result = Vec::new();
         let mut path = path.clone();
         path.push("saves");
@@ -39,26 +40,14 @@ impl MinecraftSave {
                     .to_string_lossy()
                     .to_string(),
                 path: child,
+                instance_name: instance_name.clone(),
             });
         }
         Ok(result)
     }
     pub fn run_backup(&self, backup_root: PathBuf, compress_level: i32) -> Result<()> {
         let mut backup_file = backup_root;
-        let parent_name = self
-            .path
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .file_name()
-            .unwrap()
-            .to_string_lossy()
-            .to_string();
-
-        backup_file.push(parent_name);    
+        backup_file.push(self.instance_name.clone());
         backup_file.push(self.name.clone());
         let mut last_hash = backup_file.clone();
         last_hash.push("last_hash.ron");
@@ -88,11 +77,11 @@ impl MinecraftSave {
                 if file_path.is_file() {
                     let mut writer = archive.append_writer(&mut header, relative)?;
                     let hash = Self::hash_and_write(&mut File::open(file_path)?, &mut writer)?;
-                    hashs.insert(file_path.to_path_buf(), HEXLOWER.encode(hash.as_ref()));
+                    hashs.insert(relative.to_path_buf(), HEXLOWER.encode(hash.as_ref()));
                 }
             }
             fs::write(last_hash, ron::to_string(&hashs)?.as_bytes())?;
-            log::debug!("Compressing");
+            log::info!("Compressing");
             zstd::stream::copy_encode(
                 &mut File::open(backup_file.clone())?,
                 &mut File::create(backup_file.with_added_extension("zst"))?,
@@ -101,7 +90,43 @@ impl MinecraftSave {
             fs::remove_file(backup_file)?;
             return Ok(());
         }
-        todo!();
+
+        let mut hashs: HashMap<PathBuf, String> = ron::from_str(&fs::read_to_string(last_hash)?)?;
+        let mut archive = tar::Builder::new(File::create(&backup_file)?);
+        let mut changed = false;
+        for item in WalkDir::new(&self.path).sort_by_file_name() {
+            let entry = item?;
+            let file_path = entry.path();
+            let relative = file_path.strip_prefix(&self.path)?;
+            if file_path.is_file() {
+                let hash = HEXLOWER.encode(Self::hash(&mut File::open(file_path)?)?.as_ref());
+
+                if let Some(last) = hashs.get(&relative.to_path_buf()) {
+                    log::debug!(
+                        "Comparing hash of {}: {} & {}",
+                        relative.to_str().unwrap(),
+                        hash,
+                        last
+                    );
+                    if last.to_string() == hash {
+                        continue;
+                    }
+                }
+                changed = true;
+                archive.append_path(file_path)?;
+                hashs.insert(relative.to_path_buf(), hash);
+            }
+        }
+        if changed {
+            log::info!("File changed, compressing");
+            zstd::stream::copy_encode(
+                &mut File::open(backup_file.clone())?,
+                &mut File::create(backup_file.with_added_extension("zst"))?,
+                compress_level,
+            )?;
+        }
+        log::info!("File unchanged");
+        fs::remove_file(backup_file)?;
         Ok(())
     }
     fn hash_and_write<R: Read, W: Write>(source: &mut R, target: &mut W) -> Result<Digest> {

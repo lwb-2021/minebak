@@ -19,6 +19,7 @@ pub fn rescan_instances(config: &mut Config) -> Result<()> {
 }
 
 pub fn run_backup(config: &Config) -> Result<()> {
+    log::info!("Starting backup");
     for save in config
         .instance_roots
         .iter()
@@ -28,5 +29,6 @@ pub fn run_backup(config: &Config) -> Result<()> {
     {
         save.run_backup(config.backup_root.clone(), 3)?;
     }
+    log::info!("Backup finished");
     Ok(())
 }
