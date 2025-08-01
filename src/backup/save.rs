@@ -1,9 +1,3 @@
-use anyhow::{Ok, Result, anyhow};
-use data_encoding::HEXLOWER;
-use ring::digest::{Context, Digest, SHA256};
-use serde::{Deserialize, Serialize};
-use walkdir::WalkDir;
-
 use std::{
     collections::HashMap,
     fs::{self, File},
@@ -12,10 +6,19 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use anyhow::{Ok, Result, anyhow};
+use data_encoding::HEXLOWER;
+use ring::digest::{Context, Digest, SHA256};
+use serde::{Deserialize, Serialize};
+use walkdir::WalkDir;
+
+
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MinecraftSave {
     pub instance_name: String,
     pub name: String,
+    pub image: Option<PathBuf>,
     path: PathBuf,
 }
 
@@ -29,6 +32,12 @@ impl MinecraftSave {
         }
         for entry in fs::read_dir(path)? {
             let child = entry?.path();
+            let mut icon = child.clone();
+            let mut image = None;
+            icon.push("icon.png");
+            if icon.exists() {
+                image = Some(icon);
+            }
             log::debug!("Find save: {}", child.to_string_lossy());
             result.push(MinecraftSave {
                 name: child
@@ -39,6 +48,7 @@ impl MinecraftSave {
                     ))?
                     .to_string_lossy()
                     .to_string(),
+                image,
                 path: child,
                 instance_name: instance_name.clone(),
             });
@@ -128,6 +138,27 @@ impl MinecraftSave {
         log::info!("File unchanged");
         fs::remove_file(backup_file)?;
         Ok(())
+    }
+    pub fn list_backups(&self, backup_root: PathBuf) -> Result<Vec<String>>{
+        let mut backup_folder = backup_root;
+        backup_folder.push(self.instance_name.clone());
+        backup_folder.push(self.name.clone());
+        log::debug!("{:?}", backup_folder);
+        let mut res = Vec::new();
+        for entry in fs::read_dir(backup_folder)?{
+            let entry = entry?;
+            if entry.file_type()?.is_file(){
+                let name = entry.file_name().to_string_lossy().to_string();
+                if name.contains(".tar.zst") {
+                    println!("Backup dectected: {}", name);
+                    res.push(name.replace(".tar.zst", ""));       
+                }
+            }
+        }
+        Ok(res)
+    }
+    pub fn recover(&self, backup_root: PathBuf, timestamp: String){
+
     }
     fn hash_and_write<R: Read, W: Write>(source: &mut R, target: &mut W) -> Result<Digest> {
         let mut context = Context::new(&SHA256);

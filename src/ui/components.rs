@@ -1,15 +1,8 @@
-use crate::config::Config;
+use std::{env, fmt::format, iter::zip, path::PathBuf, time::Duration};
 
-use std::{
-    env,
-    path::PathBuf,
-    sync::{
-        RwLock,
-        mpsc::{Receiver, Sender},
-    },
-};
-
-use eframe::egui::{self, Color32, CornerRadius, Frame, Margin, RichText, Stroke, panel::Side};
+use chrono::DateTime;
+use eframe::egui::{self, CornerRadius, Frame, ImageSource, Margin, RichText, panel::Side};
+use log::debug;
 use rfd::FileDialog;
 
 use super::{MineBakApp, Signal};
@@ -42,7 +35,28 @@ fn central(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::containers::F
                 for instance in instance_root.instances.iter() {
                     ui.collapsing(instance.name.clone(), |ui| {
                         for save in instance.saves.iter() {
-                            ui.heading(RichText::new(save.name.clone()));
+                            ui.group(|ui| {
+                                ui.horizontal(|ui| {
+                                    if save.image.is_some() {
+                                        ui.image(ImageSource::Uri(
+                                            ("file://".to_string()
+                                                + &save
+                                                    .image
+                                                    .as_ref()
+                                                    .unwrap()
+                                                    .to_string_lossy()
+                                                    .to_string())
+                                                .into(),
+                                        ));
+                                    }
+                                    ui.heading(RichText::new(save.name.clone()));
+                                    if ui.button("恢复").clicked() {
+                                        app.states.window_recover_refreshed = false;
+                                        app.states.recover_current_save = Some(save.clone());
+                                        app.states.window_recover_show = true;
+                                    }
+                                })
+                            });
                         }
                     });
                 }
@@ -68,7 +82,8 @@ fn action_buttons(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::contai
 }
 
 fn show_windows(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::containers::Frame) {
-    show_add_save_window(ctx, app, frame);
+    show_add_save_window(ctx, app, frame.clone());
+    show_recover_window(ctx, app, frame);
 }
 
 fn show_add_save_window(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::containers::Frame) {
@@ -173,7 +188,8 @@ fn show_add_save_window(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::
                     if !name.is_empty() {
                         app.states.add_save_window_name_input = name;
                     } else {
-                        app.states.add_save_window_error_message = "自动识别失败，请手动输入".to_string();
+                        app.states.add_save_window_error_message =
+                            "自动识别失败，请手动输入".to_string();
                     }
                 }
             });
@@ -206,5 +222,52 @@ fn show_add_save_window(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::
                     todo!("添加普通实例")
                 }
             });
+        });
+}
+
+fn show_recover_window(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::containers::Frame) {
+    egui::Window::new("恢复")
+        .frame(frame)
+        .open(&mut app.states.window_recover_show)
+        .show(ctx, |ui| {
+            if app.states.recover_current_save.is_none() {
+                ui.label("出Bug了，请重新打开");
+            }
+            if !app.states.window_recover_refreshed {
+                let mut wait = ui.label("列出备份中，请等待");
+                let result = app
+                    .states
+                    .recover_current_save
+                    .clone()
+                    .unwrap()
+                    .list_backups(app.config.read().unwrap().backup_root.clone());
+                if result.is_err() {
+                    log::error!("{}", result.as_ref().unwrap_err());
+                    app.states.err_list.push(result.unwrap_err());
+                    return;
+                }
+                app.states.window_recover_refreshed = true;
+                wait.set_close();
+                let result = result.unwrap();
+                app.states.recover_backup_names = result;
+            }
+
+            ui.heading(
+                "恢复 ".to_string() + &app.states.recover_current_save.as_ref().unwrap().name,
+            );
+            for item in app.states.recover_backup_names.iter() {
+                let date = DateTime::from_timestamp_millis(item.parse().unwrap()).unwrap();
+                ui.horizontal(|ui| {
+                    ui.label(date.format("%Y-%m-%d %H:%M").to_string());
+                    if ui.button("恢复").clicked() {
+                        app.sender
+                            .send(Signal::Recover {
+                                save: app.states.recover_current_save.take().unwrap(),
+                                timestamp: date.timestamp().to_string(),
+                            })
+                            .unwrap();
+                    }
+                });
+            }
         });
 }

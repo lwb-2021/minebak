@@ -3,7 +3,7 @@ mod theming;
 
 use std::{path::PathBuf, sync::{mpsc::{Receiver, Sender}, Arc, RwLock}};
 
-use crate::{config::Config};
+use crate::{backup::MinecraftSave, config::Config};
 
 use anyhow::Result;
 use eframe::{run_native, App, CreationContext, NativeOptions};
@@ -18,7 +18,10 @@ pub enum Signal {
         multimc: bool,
         version_isolated: bool
     },
-    Recover(),
+    Recover {
+        save: MinecraftSave,
+        timestamp: String,
+    },
     Exit
 }
 
@@ -28,6 +31,14 @@ pub struct States {
     add_save_window_error_message: String,
     add_save_window_path_input: String,
     add_save_window_name_input: String,
+
+    window_recover_show: bool,
+    window_recover_refreshed: bool,
+    recover_current_save: Option<MinecraftSave>,
+    recover_backup_names: Vec<String>,
+
+
+    err_list: Vec<anyhow::Error>,
 }
 
 pub fn show_ui(config: Arc<RwLock<Config>>, sender: Sender<Signal>, err: Receiver<anyhow::Error>) -> Result<()>{
@@ -53,6 +64,7 @@ pub struct MineBakApp{
 
 impl MineBakApp {
     pub fn new(config: Arc<RwLock<Config>>, sender: Sender<Signal>, err: Receiver<anyhow::Error>, cc: &CreationContext<'_>) -> Self {
+        egui_extras::install_image_loaders(&cc.egui_ctx);
         theming::set_font(cc);
         let mut app = Self { config, sender, err, states: States::default() };
         app

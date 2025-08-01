@@ -9,11 +9,10 @@ mod ui;
 use std::{
     env,
     fs::{self, File},
-    panic,
     path::PathBuf,
     sync::{
         Arc, RwLock,
-        mpsc::{self, Receiver, Sender},
+        mpsc::{self, Receiver},
     },
     thread::{self},
     time::Duration,
@@ -69,16 +68,6 @@ fn main() -> Result<()> {
     if arg.duration.is_some() {
         configuration.duration = Duration::from_secs(arg.duration.unwrap());
     }
-
-    // let instance_path = PathBuf::try_from("/home/lwb/.local/share/PrismLauncher/instances")?;
-    // configuration
-    //     .instance_roots
-    //     .push(MinecraftInstanceRoot::new(
-    //         "PrismLauncher".to_string(),
-    //         instance_path,
-    //         true,
-    //     )?);
-
     if arg.run_backup {
         let _ = rescan_instances(&mut configuration).is_err_and(report_err_in_background);
         let _ = configuration
@@ -174,6 +163,13 @@ fn init_log() -> Result<()> {
 
     let std_out_appender = ConsoleAppender::builder().encoder(encoder).build();
 
+    
+    #[allow(unused)]
+    let level = log::LevelFilter::Info;
+
+    #[cfg(debug_assertions)]
+    let level = log::LevelFilter::Debug;
+
     let log4rs_config = log4rs::Config::builder()
         .appender(Appender::builder().build("logfile", Box::new(log_file_appender)))
         .appender(Appender::builder().build("std_out", Box::new(std_out_appender)))
@@ -181,7 +177,7 @@ fn init_log() -> Result<()> {
             Root::builder()
                 .appender("logfile")
                 .appender("std_out")
-                .build(log::LevelFilter::Debug),
+                .build(level),
         )?;
     log4rs::init_config(log4rs_config)?;
     Ok(())

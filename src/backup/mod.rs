@@ -1,11 +1,11 @@
 mod instance;
 mod save;
 
-use std::path::PathBuf;
-
+#[allow(unused_imports)]
 pub use instance::{MinecraftInstance, MinecraftInstanceRoot};
 pub use save::MinecraftSave;
 
+#[warn(unused_imports)]
 use crate::config::Config;
 
 
