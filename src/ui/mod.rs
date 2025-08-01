@@ -37,6 +37,7 @@ pub struct States {
     recover_current_save: Option<MinecraftSave>,
     recover_backup_names: Vec<String>,
 
+    window_settings_show: bool,
 
     err_list: Vec<anyhow::Error>,
 }

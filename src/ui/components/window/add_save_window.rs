@@ -1,91 +1,11 @@
+use crate::ui::{Signal, MineBakApp};
+
 use std::{env, path::PathBuf};
 
-use chrono::DateTime;
-use eframe::egui::{self, CornerRadius, Frame, ImageSource, Margin, RichText, panel::Side};
 use rfd::FileDialog;
+use eframe::egui::{self, RichText};
 
-use super::{MineBakApp, Signal};
-
-pub(super) fn draw_ui(ctx: &egui::Context, app: &mut MineBakApp) {
-    let frame_central = egui::containers::Frame {
-        inner_margin: Margin::same(12),
-        ..Frame::central_panel(&ctx.style())
-    };
-    let frame_side = egui::containers::Frame {
-        inner_margin: Margin::same(12),
-        ..Frame::side_top_panel(&ctx.style())
-    };
-
-    let frame_window = egui::containers::Frame {
-        inner_margin: Margin::same(12),
-        corner_radius: CornerRadius::same(8),
-        ..Frame::window(&ctx.style())
-    };
-    show_windows(ctx, app, frame_window);
-
-    central(ctx, app, frame_central);
-    action_buttons(ctx, app, frame_side);
-}
-
-fn central(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::containers::Frame) {
-    egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
-        for instance_root in (*app.config.read().unwrap()).instance_roots.iter() {
-            ui.collapsing(instance_root.name.clone(), |ui| {
-                for instance in instance_root.instances.iter() {
-                    ui.collapsing(instance.name.clone(), |ui| {
-                        for save in instance.saves.iter() {
-                            ui.group(|ui| {
-                                ui.horizontal(|ui| {
-                                    if save.image.is_some() {
-                                        ui.image(ImageSource::Uri(
-                                            ("file://".to_string()
-                                                + &save
-                                                    .image
-                                                    .as_ref()
-                                                    .unwrap()
-                                                    .to_string_lossy()
-                                                    .to_string())
-                                                .into(),
-                                        ));
-                                    }
-                                    ui.heading(RichText::new(save.name.clone()));
-                                    if ui.button("恢复").clicked() {
-                                        app.states.window_recover_refreshed = false;
-                                        app.states.recover_current_save = Some(save.clone());
-                                        app.states.window_recover_show = true;
-                                    }
-                                })
-                            });
-                        }
-                    });
-                }
-            });
-        }
-    });
-}
-
-fn action_buttons(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::containers::Frame) {
-    egui::SidePanel::new(Side::Right, "action_buttons")
-        .frame(frame)
-        .show(ctx, |ui| {
-            if ui.button("重新扫描").clicked() {
-                app.sender.send(Signal::Rescan).unwrap();
-            }
-            if ui.button("运行备份").clicked() {
-                app.sender.send(Signal::RunBackup).unwrap();
-            }
-            if ui.button("添加存档").clicked() {
-                app.states.window_add_save_show = true;
-            }
-        });
-}
-
-fn show_windows(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::containers::Frame) {
-    show_add_save_window(ctx, app, frame.clone());
-    show_recover_window(ctx, app, frame);
-}
-
-fn show_add_save_window(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::containers::Frame) {
+pub(super) fn show(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::containers::Frame) {
     egui::Window::new("添加存档")
         .frame(frame)
         .open(&mut app.states.window_add_save_show)
@@ -221,54 +141,5 @@ fn show_add_save_window(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::
                     todo!("添加普通实例")
                 }
             });
-        });
-}
-
-fn show_recover_window(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::containers::Frame) {
-    egui::Window::new("恢复")
-        .frame(frame)
-        .open(&mut app.states.window_recover_show)
-        .show(ctx, |ui| {
-            if app.states.recover_current_save.is_none() {
-                ui.label("出Bug了，请重新打开");
-                return;
-            }
-            if !app.states.window_recover_refreshed {
-                let mut wait = ui.label("列出备份中，请等待");
-                let result = app
-                    .states
-                    .recover_current_save
-                    .clone()
-                    .unwrap()
-                    .list_backups(app.config.read().unwrap().backup_root.clone());
-                if result.is_err() {
-                    log::error!("{}", result.as_ref().unwrap_err());
-                    app.states.err_list.push(result.unwrap_err());
-                    return;
-                }
-                app.states.window_recover_refreshed = true;
-                wait.set_close();
-                let result = result.unwrap();
-                app.states.recover_backup_names = result;
-            }
-
-            ui.heading(
-                "恢复 ".to_string() + &app.states.recover_current_save.as_ref().unwrap().name,
-            );
-            ui.label("请关闭相应的Minecraft存档后进行恢复！");
-            for item in app.states.recover_backup_names.iter() {
-                let date = DateTime::from_timestamp_millis(item.parse().unwrap()).unwrap();
-                ui.horizontal(|ui| {
-                    ui.label(date.format("%Y-%m-%d %H:%M").to_string());
-                    if ui.button("恢复").clicked() {
-                        app.sender
-                            .send(Signal::Recover {
-                                save: app.states.recover_current_save.clone().unwrap(),
-                                timestamp: date.timestamp_millis().to_string(),
-                            })
-                            .unwrap();
-                    }
-                });
-            }
         });
 }

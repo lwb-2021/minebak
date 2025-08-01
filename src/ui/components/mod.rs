@@ -1,0 +1,56 @@
+mod central;
+mod window;
+
+
+
+use super::{MineBakApp, Signal};
+
+
+
+use eframe::egui::{self, CornerRadius, Frame, Margin, panel::Side};
+
+
+
+pub(super) fn draw_ui(ctx: &egui::Context, app: &mut MineBakApp) {
+    let frame_central = egui::containers::Frame {
+        inner_margin: Margin::same(12),
+        ..Frame::central_panel(&ctx.style())
+    };
+    let frame_side = egui::containers::Frame {
+        inner_margin: Margin::same(12),
+        ..Frame::side_top_panel(&ctx.style())
+    };
+
+    let frame_window = egui::containers::Frame {
+        inner_margin: Margin::same(12),
+        corner_radius: CornerRadius::same(8),
+        ..Frame::window(&ctx.style())
+    };
+    window::show_windows(ctx, app, frame_window);
+
+    central::central(ctx, app, frame_central);
+    action_buttons(ctx, app, frame_side);
+}
+
+
+
+fn action_buttons(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::containers::Frame) {
+    egui::SidePanel::new(Side::Right, "action_buttons")
+        .frame(frame)
+        .show(ctx, |ui| {
+            if ui.button("重新扫描").clicked() {
+                app.sender.send(Signal::Rescan).unwrap();
+            }
+            if ui.button("运行备份").clicked() {
+                app.sender.send(Signal::RunBackup).unwrap();
+            }
+            if ui.button("添加存档").clicked() {
+                app.states.window_add_save_show = true;
+            }
+            if ui.button("设置").clicked() {
+                app.states.window_settings_show = true;
+            }
+        });
+}
+
+
