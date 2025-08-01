@@ -10,9 +10,8 @@ use anyhow::{Ok, Result, anyhow};
 use data_encoding::HEXLOWER;
 use ring::digest::{Context, Digest, SHA256};
 use serde::{Deserialize, Serialize};
+use tar::Archive;
 use walkdir::WalkDir;
-
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MinecraftSave {
@@ -139,40 +138,83 @@ impl MinecraftSave {
         fs::remove_file(backup_file)?;
         Ok(())
     }
-    pub fn list_backups(&self, backup_root: PathBuf) -> Result<Vec<String>>{
+    pub fn list_backups(&self, backup_root: PathBuf) -> Result<Vec<String>> {
         let mut backup_folder = backup_root;
         backup_folder.push(self.instance_name.clone());
         backup_folder.push(self.name.clone());
-        log::debug!("{:?}", backup_folder);
         let mut res = Vec::new();
-        for entry in fs::read_dir(backup_folder)?{
+        for entry in fs::read_dir(backup_folder)? {
             let entry = entry?;
-            if entry.file_type()?.is_file(){
+            if entry.file_type()?.is_file() {
                 let name = entry.file_name().to_string_lossy().to_string();
                 if name.contains(".tar.zst") {
                     println!("Backup dectected: {}", name);
-                    res.push(name.replace(".tar.zst", ""));       
+                    res.push(name.replace(".tar.zst", ""));
                 }
             }
         }
         Ok(res)
     }
-    pub fn recover(&self, backup_root: PathBuf, timestamp: String){
+    pub fn recover(&self, backup_root: PathBuf, timestamp: String) -> Result<()> {
+        let mut backup_folder = backup_root.clone();
+        backup_folder.push(self.instance_name.clone());
+        backup_folder.push(self.name.clone());
 
+        let mut backups = self.list_backups(backup_root)?;
+        backups.sort();
+        backups.reverse();
+
+        let mut recover_root = self.path.clone();
+        recover_root.pop();
+        recover_root.push(
+            self.name.clone()
+                + "-recover-"
+                + &SystemTime::now()
+                    .duration_since(UNIX_EPOCH)?
+                    .as_millis()
+                    .to_string(),
+        );
+
+        log::info!("Recovery started");
+        let mut start_recovery = false;
+        let mut files: Vec<PathBuf> = Vec::new();
+        for item in backups {
+            log::debug!("{} {}", item, timestamp);
+            if item == timestamp {
+                start_recovery = true;
+            }
+            if start_recovery {
+                log::info!("Recovering: {} to {}", item, recover_root.to_string_lossy());
+                backup_folder.push(timestamp.clone() + ".tar.zst");
+
+                let file = File::open(backup_folder.clone())?;
+                let decoder = zstd::Decoder::new(file)?;
+                let mut archive = Archive::new(decoder);
+                archive.set_overwrite(false);
+                archive.unpack(recover_root.clone())?;
+
+                backup_folder.pop();
+            }
+        }
+        log::info!("Recovery finished");
+        Ok(())
     }
     fn hash_and_write<R: Read, W: Write>(source: &mut R, target: &mut W) -> Result<Digest> {
         let mut context = Context::new(&SHA256);
         let mut buf = [0; 1024];
-        source.read(&mut buf)?;
-        context.update(&buf);
-        target.write(&buf)?;
+        while source.read(&mut buf)? != 0 {
+            context.update(&buf);
+            target.write(&buf)?;
+        }
         Ok(context.finish())
     }
     fn hash<R: Read>(source: &mut R) -> Result<Digest> {
         let mut context = Context::new(&SHA256);
         let mut buf = [0; 1024];
-        source.read(&mut buf)?;
-        context.update(&buf);
+        while source.read(&mut buf)? != 0 {
+            context.update(&buf);
+        }
+
         Ok(context.finish())
     }
 }

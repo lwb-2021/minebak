@@ -232,6 +232,7 @@ fn show_recover_window(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::c
         .show(ctx, |ui| {
             if app.states.recover_current_save.is_none() {
                 ui.label("出Bug了，请重新打开");
+                return;
             }
             if !app.states.window_recover_refreshed {
                 let mut wait = ui.label("列出备份中，请等待");
@@ -255,6 +256,7 @@ fn show_recover_window(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::c
             ui.heading(
                 "恢复 ".to_string() + &app.states.recover_current_save.as_ref().unwrap().name,
             );
+            ui.label("请关闭相应的Minecraft存档后进行恢复！");
             for item in app.states.recover_backup_names.iter() {
                 let date = DateTime::from_timestamp_millis(item.parse().unwrap()).unwrap();
                 ui.horizontal(|ui| {
@@ -262,8 +264,8 @@ fn show_recover_window(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::c
                     if ui.button("恢复").clicked() {
                         app.sender
                             .send(Signal::Recover {
-                                save: app.states.recover_current_save.take().unwrap(),
-                                timestamp: date.timestamp().to_string(),
+                                save: app.states.recover_current_save.clone().unwrap(),
+                                timestamp: date.timestamp_millis().to_string(),
                             })
                             .unwrap();
                     }

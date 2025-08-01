@@ -100,6 +100,7 @@ fn main() -> Result<()> {
 
 fn report_err_in_background(err: Error) -> bool {
     log::error!("TODO: report error");
+    log::error!("{}", err);
     Err::<(), anyhow::Error>(err).unwrap();
     true
 }
@@ -126,14 +127,14 @@ fn run_logic(
             match signal {
                 Signal::Rescan => {
                     backup::rescan_instances(&mut configuration.try_write().unwrap())?;
-                }
+                },
                 Signal::Exit => {
                     configuration.read().unwrap().save(config_path.clone())?;
                     break;
-                }
+                },
                 Signal::RunBackup => {
                     run_backup(&configuration.read().unwrap())?;
-                }
+                },
                 Signal::AddInstance {
                     name,
                     path,
@@ -144,7 +145,11 @@ fn run_logic(
                         MinecraftInstanceRoot::new(name, path, multimc, version_isolated)?
                     );
                     configuration.read().unwrap().save(config_path.clone())?;
-                }
+                },
+                Signal::Recover { save, timestamp } => {
+                    save.recover(configuration.read().unwrap().backup_root.clone(), timestamp)?;
+                },
+                #[allow(unreachable_patterns)]
                 s => todo!("{:?}", s),
             }
         }
