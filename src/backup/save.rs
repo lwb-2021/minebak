@@ -201,17 +201,27 @@ impl MinecraftSave {
     fn hash_and_write<R: Read, W: Write>(source: &mut R, target: &mut W) -> Result<Digest> {
         let mut context = Context::new(&SHA256);
         let mut buf = [0; 1024];
-        while source.read(&mut buf)? != 0 {
-            context.update(&buf);
-            target.write(&buf)?;
+
+        loop {
+            let count = source.read(&mut buf)?;
+            if count == 0 {
+                break;
+            }
+            context.update(&buf[..count]);
+            target.write(&buf[..count])?;
         }
+
         Ok(context.finish())
     }
     fn hash<R: Read>(source: &mut R) -> Result<Digest> {
         let mut context = Context::new(&SHA256);
         let mut buf = [0; 1024];
-        while source.read(&mut buf)? != 0 {
-            context.update(&buf);
+        loop {
+            let count = source.read(&mut buf)?;
+            if count == 0 {
+                break;
+            }
+            context.update(&buf[..count]);
         }
 
         Ok(context.finish())
