@@ -17,6 +17,7 @@
           extensions = [ "rust-src" "rust-analyzer" ];
         };
         nativeDeps = with pkgs; [
+          libgcc.libgcc
           libxkbcommon
           dbus
           wayland
@@ -59,9 +60,15 @@
           cargoSha256 = nixpkgs.lib.fakeSha256;
           nativeBuildInputs = with pkgs;[
             pkg-config
+
+            makeWrapper
           ];
           buildInputs = nativeDeps;
           RUSTFLAGS = "--cfg=web_sys_unstable_apis";
+
+          postInstall = ''
+            wrapProgram "$out/bin/${name}" --prefix LD_LIBRARY_PATH : "${pkgs.lib.makeLibraryPath nativeDeps}"
+          '';
         };
 
         # 应用运行器 (nix run)
