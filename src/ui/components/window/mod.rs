@@ -1,4 +1,5 @@
 mod add_save_window;
+mod configuration;
 mod recover_window;
 
 use crate::ui::MineBakApp;
@@ -14,6 +15,7 @@ pub(super) fn show_windows(
     frame: egui::containers::Frame,
 ) {
     add_save_window::show(ctx, app, frame.clone());
+    configuration::show(ctx, app, frame.clone());
     recover_window::show(ctx, app, frame);
 }
 
