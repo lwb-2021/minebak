@@ -37,34 +37,31 @@
 
           ] ++ nativeDeps;
 
+          RUST_BACKTRACE = 1;
+
           shellHook = ''
-            export RUST_BACKTRACE=1
             export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath nativeDeps}:$LD_LIBRARY_PATH"
           '';
         };
 
         # 构建应用 (nix build)
-        packages.default = pkgs.rustPlatform.buildRustPackage {
+        packages.default = (pkgs.makeRustPlatform {
+          cargo = rustToolchain;
+          rustc = rustToolchain;
+        }).buildRustPackage rec {
           pname = "${name}";
           version = "0.1.0";
 
           src = ./.;
 
-          cargoLock.lockFile = ./Cargo.lock;
+          cargoLock.lockFile = src + /Cargo.lock;
+          
+          cargoSha256 = nixpkgs.lib.fakeSha256;
           nativeBuildInputs = with pkgs;[
-            rustToolchain
             pkg-config
           ];
-
           buildInputs = nativeDeps;
-
-          # egui 特定构建参数
           RUSTFLAGS = "--cfg=web_sys_unstable_apis";
-
-          # 测试时需要的变量
-          checkPhase = ''
-            export XDG_RUNTIME_DIR=$(mktemp -d)
-          '';
         };
 
         # 应用运行器 (nix run)
