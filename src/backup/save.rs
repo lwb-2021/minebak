@@ -94,7 +94,7 @@ impl MinecraftSave {
             fs::write(last_hash, ron::to_string(&hashs)?.as_bytes())?;
             log::info!("Compressing");
             zstd::stream::copy_encode(
-                &mut File::open(backup_file.clone())?,
+                &mut File::open(&backup_file)?,
                 &mut File::create(backup_file.with_added_extension("zst"))?,
                 compress_level,
             )?;
@@ -113,12 +113,12 @@ impl MinecraftSave {
                 let hash = HEXLOWER.encode(hash(&mut File::open(file_path)?)?.as_ref());
 
                 if let Some(last) = hashs.get(&relative.to_path_buf()) {
-                    log::debug!(
-                        "Comparing hash of {}: {} & {}",
-                        relative.to_str().unwrap(),
-                        hash,
-                        last
-                    );
+                    // log::debug!(
+                    //     "Comparing hash of {}: {} & {}",
+                    //     relative.to_str().unwrap(),
+                    //     hash,
+                    //     last
+                    // );
                     if last.to_string() == hash {
                         continue;
                     }
@@ -126,19 +126,20 @@ impl MinecraftSave {
                 changed = true;
                 archive.append_file(relative, &mut File::open(file_path)?)?;
                 hashs.insert(relative.to_path_buf(), hash);
+                
             }
         }
         if changed {
             log::info!("File changed, compressing");
             zstd::stream::copy_encode(
-                &mut File::open(backup_file.clone())?,
+                &mut File::open(&backup_file)?,
                 &mut File::create(backup_file.with_added_extension("zst"))?,
                 compress_level,
             )?;
         } else {
             log::info!("File not changed");
-            fs::remove_file(backup_file)?;
         }
+        fs::remove_file(&backup_file)?;
         Ok(changed)
     }
     pub fn list_backups(&self, backup_root: PathBuf) -> Result<Vec<String>> {

@@ -23,6 +23,9 @@ pub fn generate_sum_for_folder(root: PathBuf) -> Result<HashMap<PathBuf, String>
     for item in walkdir::WalkDir::new(&root) {
         let entry = item?;
         let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
         let digest = hash(&mut File::open(path)?)?;
         res.insert(
             path.strip_prefix(&root)?.to_path_buf(),
@@ -37,6 +40,9 @@ pub fn compare_hash(root: PathBuf, hashs: &HashMap<PathBuf, String>) -> Result<H
     for item in walkdir::WalkDir::new(&root) {
         let entry = item?;
         let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
         let relative = path.strip_prefix(&root)?;
         let digest = HEXLOWER.encode(hash(&mut File::open(path)?)?.as_ref());
         if hashs.get(relative) != Some(&digest) {

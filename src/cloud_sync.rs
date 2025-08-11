@@ -5,18 +5,22 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{Result, anyhow, bail};
+use anyhow::{anyhow, bail, Ok, Result};
 use rustydav::{client::Client, prelude::*};
 use serde::{Deserialize, Serialize};
 
 use crate::{config::Config, utils::compare_hash};
 
 pub fn run_sync(config: &Config) -> Result<()> {
+    log::info!("Sync started");
     if !config.cloud_services.is_empty() {
-        for service in config.cloud_services.values() {
+        for (name, service) in &config.cloud_services {
+            log::info!("Sync started to {}", name);
             service.sync(&config.backup_root, "minebak".to_string(), false, false)?;
+            log::info!("Sync finished to {}", name);
         }
     }
+    log::info!("Sync finished");
     Ok(())
 }
 
@@ -27,6 +31,7 @@ pub enum CloudService {
         endpoint: String,
         username: String,
         password: String,
+        init: bool,
         #[serde(skip_serializing, skip_deserializing)]
         client: Option<Client>,
     },
@@ -36,15 +41,23 @@ impl CloudService {
     pub fn push_file(&self, file: &Path, remote: String) -> Result<Response> {
         match &self {
             Self::WebDAV {
-                endpoint: _,
+                endpoint,
                 username: _,
                 password: _,
                 client,
-            } => Ok(client
-                .as_ref()
-                .unwrap()
-                .put(fs::read(file)?, &remote)?
-                .error_for_status()?),
+                init: _,
+            } => {
+                log::debug!(
+                    "Pushing {} to {}",
+                    &(endpoint.clone() + &remote),
+                    file.to_str().unwrap()
+                );
+                Ok(client
+                    .as_ref()
+                    .unwrap()
+                    .put(fs::read(file)?, &(endpoint.clone() + &remote))?
+                    .error_for_status()?)
+            }
             s => panic!("Unimplemented sync method {:?}", s),
         }
     }
@@ -55,16 +68,17 @@ impl CloudService {
     ) -> Result<Response> {
         match &self {
             Self::WebDAV {
-                endpoint: _,
+                endpoint,
                 username: _,
                 password: _,
                 client,
+                init: _,
             } => Ok(client
                 .as_ref()
                 .unwrap()
                 .put(
                     ron::to_string(&content)?,
-                    &format!("{}/hash.ron", remote_root),
+                    &format!("{}{}/hash.ron", endpoint, remote_root),
                 )?
                 .error_for_status()?),
             s => panic!("Unimplemented sync method {:?}", s),
@@ -74,38 +88,48 @@ impl CloudService {
     pub fn pull_file(&self, remote: String, to: &Path) -> Result<()> {
         match &self {
             Self::WebDAV {
-                endpoint: _,
+                endpoint,
                 username: _,
                 password: _,
                 client,
+                init: _,
             } => {
+                log::debug!(
+                    "Pulling {} to {}",
+                    &(endpoint.clone() + &remote),
+                    to.to_str().unwrap()
+                );
                 fs::write(
                     to,
                     client
                         .as_ref()
                         .unwrap()
-                        .get(&remote)?
+                        .get(&(endpoint.clone() + &remote))?
                         .error_for_status()?
                         .bytes()?,
                 )?;
             }
             s => panic!("Unimplemented sync method {:?}", s),
         }
-        todo!()
+        Ok(())
     }
 
     pub fn delete_file(&self, remote: String) -> Result<Response> {
         match &self {
             Self::WebDAV {
-                endpoint: _,
+                endpoint,
                 username: _,
                 password: _,
                 client,
-            } => Ok(client
-                .as_ref()
-                .unwrap()
-                .delete(&remote)?
-                .error_for_status()?),
+                init: _,
+            } => {
+                log::debug!("Deleting {}", remote);
+                Ok(client
+                    .as_ref()
+                    .unwrap()
+                    .delete(&(endpoint.clone() + &remote))?
+                    .error_for_status()?)
+            }
             s => panic!("Unimplemented sync method {:?}", s),
         }
     }
@@ -118,11 +142,10 @@ impl CloudService {
         force: bool,
         skip_conflict: bool,
     ) -> Result<()> {
-        let hash_tmp = env::temp_dir()
-            .with_file_name("hash.pull.ron")
-            .to_path_buf();
+        let mut hash_tmp = env::temp_dir().to_path_buf();
+        hash_tmp.push("hash.pull.ron");
         self.pull_file("minebak/hash.ron".to_string(), &hash_tmp)?;
-        let mut hashs = ron::from_str(&fs::read_to_string(hash_tmp)?)?;
+        let mut hashs = ron::from_str(&fs::read_to_string(&hash_tmp)?)?;
         for ((item, conflict), (old_hash, new_hash)) in compare_hash(folder.to_path_buf(), &hashs)?
         {
             if conflict && skip_conflict {
@@ -141,6 +164,7 @@ impl CloudService {
             hashs.insert(item.to_path_buf(), new_hash);
         }
         self.push_hash(&hashs, remote_root)?;
+        fs::remove_file(hash_tmp)?;
         Ok(())
     }
     pub fn pull(
@@ -150,9 +174,8 @@ impl CloudService {
         force: bool,
         skip_conflict: bool,
     ) -> Result<()> {
-        let hash_tmp = env::temp_dir()
-            .with_file_name("hash.pull.ron")
-            .to_path_buf();
+        let mut hash_tmp = env::temp_dir().to_path_buf();
+        hash_tmp.push("hash.pull.ron");
         self.pull_file("minebak/hash.ron".to_string(), &hash_tmp)?;
         let hashs = ron::from_str(&fs::read_to_string(hash_tmp)?)?;
         if !skip_conflict {
@@ -189,13 +212,31 @@ impl CloudService {
     pub fn open_connection(&mut self) -> Result<()> {
         match self {
             Self::WebDAV {
-                endpoint: _,
+                endpoint,
                 username,
                 password,
                 client,
+                init,
             } => {
                 if client.is_none() {
                     *client = Some(Client::init(&username, &password));
+                }
+                if !*init {
+                    log::info!("Initalizating WebDAV");
+                    client
+                        .as_ref()
+                        .unwrap()
+                        .mkcol(&(endpoint.to_string() + "minebak"))?
+                        .error_for_status()?;
+                    let hashs_empty: HashMap<PathBuf, String> = HashMap::new();
+                    client
+                        .as_ref()
+                        .unwrap()
+                        .put(
+                            ron::to_string(&hashs_empty)?,
+                            &(endpoint.to_string() + "minebak/hash.ron"),
+                        )?
+                        .error_for_status()?;
                 }
             }
             s => todo!("{:?} sync not implemented", s),

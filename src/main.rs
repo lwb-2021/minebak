@@ -61,9 +61,10 @@ fn main() -> Result<()> {
 
     for service in configuration.cloud_services.values_mut() {
         service.open_connection()?;
+        log::debug!("Connection Opened for {:?}", service);
     }
 
-    
+    run_sync(&configuration)?;
     if arg.run_backup {
         let _ = rescan_instances(&mut configuration).is_err_and(report_err_in_background);
         let _ = configuration

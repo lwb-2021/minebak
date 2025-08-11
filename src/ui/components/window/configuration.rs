@@ -102,6 +102,7 @@ pub(super) fn show(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::conta
                                     endpoint: app.states.webdav_endpoint.clone(),
                                     username: app.states.webdav_username.clone(),
                                     password: app.states.webdav_password.clone(),
+                                    init: false,
                                     client: None
                                 },
                             );
