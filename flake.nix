@@ -23,6 +23,7 @@
           wayland
           libGL
           vulkan-loader
+          openssl
         ] ++ (with pkgs.xorg;[
             libX11
             libXcursor

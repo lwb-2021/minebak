@@ -13,6 +13,8 @@ use serde::{Deserialize, Serialize};
 use tar::Archive;
 use walkdir::WalkDir;
 
+use crate::utils::hash;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MinecraftSave {
     pub instance_name: String,
@@ -54,7 +56,7 @@ impl MinecraftSave {
         }
         Ok(result)
     }
-    pub fn run_backup(&self, backup_root: PathBuf, compress_level: i32) -> Result<()> {
+    pub fn run_backup(&self, backup_root: PathBuf, compress_level: i32) -> Result<bool> {
         let mut backup_file = backup_root;
         backup_file.push(self.instance_name.clone());
         backup_file.push(self.name.clone());
@@ -97,7 +99,7 @@ impl MinecraftSave {
                 compress_level,
             )?;
             fs::remove_file(backup_file)?;
-            return Ok(());
+            return Ok(true);
         }
 
         let mut hashs: HashMap<PathBuf, String> = ron::from_str(&fs::read_to_string(last_hash)?)?;
@@ -108,7 +110,7 @@ impl MinecraftSave {
             let file_path = entry.path();
             let relative = file_path.strip_prefix(&self.path)?;
             if file_path.is_file() {
-                let hash = HEXLOWER.encode(Self::hash(&mut File::open(file_path)?)?.as_ref());
+                let hash = HEXLOWER.encode(hash(&mut File::open(file_path)?)?.as_ref());
 
                 if let Some(last) = hashs.get(&relative.to_path_buf()) {
                     log::debug!(
@@ -133,10 +135,11 @@ impl MinecraftSave {
                 &mut File::create(backup_file.with_added_extension("zst"))?,
                 compress_level,
             )?;
+        } else {
+            log::info!("File not changed");
+            fs::remove_file(backup_file)?;
         }
-        log::info!("File unchanged");
-        fs::remove_file(backup_file)?;
-        Ok(())
+        Ok(changed)
     }
     pub fn list_backups(&self, backup_root: PathBuf) -> Result<Vec<String>> {
         let mut backup_folder = backup_root;
@@ -213,17 +216,5 @@ impl MinecraftSave {
 
         Ok(context.finish())
     }
-    fn hash<R: Read>(source: &mut R) -> Result<Digest> {
-        let mut context = Context::new(&SHA256);
-        let mut buf = [0; 1024];
-        loop {
-            let count = source.read(&mut buf)?;
-            if count == 0 {
-                break;
-            }
-            context.update(&buf[..count]);
-        }
-
-        Ok(context.finish())
-    }
+    
 }

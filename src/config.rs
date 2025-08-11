@@ -1,19 +1,22 @@
 use std::{fs::{self, File}, io::Write, path::PathBuf, time::Duration};
 
 use anyhow::{Ok, Result};
+use eframe::egui::ahash::HashMap;
 use ron::ser::{to_string_pretty, PrettyConfig};
 use serde::{Serialize, Deserialize};
 
-use crate::backup::MinecraftInstanceRoot;
+use crate::{backup::MinecraftInstanceRoot, cloud_sync::CloudService};
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Config {
     pub autostart: bool,
     pub cron: bool,
+    pub autostart_installed: bool,
+    pub cron_installed: bool,
 
     pub duration: Duration,
     
-    pub services: Vec<CloudService>,
+    pub cloud_services: HashMap<String, CloudService>,
 
     pub instance_roots: Vec<MinecraftInstanceRoot>,
     pub backup_root: PathBuf
@@ -37,13 +40,3 @@ pub fn read_config(config_path: PathBuf) -> Result<Config>{
     Ok(ron::from_str(&content)?)
 }
 
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum CloudService {
-
-}
-
-
-impl CloudService {
-    
-}

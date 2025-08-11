@@ -2,9 +2,11 @@
 #![windows_subsystem = "windows"]
 
 mod backup;
+mod cloud_sync;
 mod cmd;
 mod config;
 mod ui;
+mod utils;
 
 use std::{
     env,
@@ -22,6 +24,7 @@ use anyhow::{Error, Ok, Result};
 use backup::{MinecraftInstanceRoot, rescan_instances};
 use clap::Parser;
 
+use cloud_sync::run_sync;
 use log4rs::{
     append::{console::ConsoleAppender, file::FileAppender},
     config::{Appender, Root},
@@ -56,15 +59,24 @@ fn main() -> Result<()> {
     }
     let mut configuration = res?;
 
-    if arg.duration.is_some() {
-        configuration.duration = Duration::from_secs(arg.duration.unwrap());
+    for service in configuration.cloud_services.values_mut() {
+        service.open_connection()?;
     }
+
+    
     if arg.run_backup {
         let _ = rescan_instances(&mut configuration).is_err_and(report_err_in_background);
         let _ = configuration
             .save(config_path)
             .is_err_and(report_err_in_background);
-        return run_backup(&configuration);
+        if run_backup(&configuration)? {
+            run_sync(&configuration)?;
+        }
+        return Ok(());
+    }
+
+    if arg.duration.is_some() {
+        configuration.duration = Duration::from_secs(arg.duration.unwrap());
     }
     if arg.run_daemon {
         run_daemon(&mut configuration, config_path);
@@ -128,7 +140,9 @@ fn run_daemon(configuration: &mut config::Config, config_path: PathBuf) -> ! {
         configuration
             .save(config_path.clone())
             .is_err_and(report_err_in_background);
-        run_backup(&configuration).is_err_and(report_err_in_background);
+        run_backup(&configuration).map(|res| if res {
+            run_sync(&configuration);
+        }).is_err_and(report_err_in_background);
         thread::sleep(configuration.duration);
     }
 }
@@ -149,7 +163,9 @@ fn run_logic(
                     break;
                 }
                 Signal::RunBackup => {
-                    run_backup(&configuration.read().unwrap())?;
+                    if run_backup(&configuration.read().unwrap())? {
+                        run_sync(&configuration.read().unwrap())?;
+                    }
                 }
                 Signal::AddInstance {
                     name,
@@ -183,6 +199,7 @@ fn run_logic(
 fn init_log() -> Result<()> {
     let mut log_file_path = env::temp_dir();
     log_file_path.push("minebak.log");
+    println!("{:?}", log_file_path);
     let encoder = Box::new(PatternEncoder::new("{l} - {m}\n"));
     File::create(&log_file_path)?;
     let log_file_appender = FileAppender::builder()

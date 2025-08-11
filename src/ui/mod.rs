@@ -2,12 +2,9 @@ mod components;
 mod theming;
 
 use std::{
-    path::PathBuf,
-    sync::{
-        Arc, RwLock,
-        mpsc::{Receiver, Sender},
-    },
-    time::Duration,
+    path::PathBuf, sync::{
+        mpsc::{Receiver, Sender}, Arc, RwLock, RwLockReadGuard
+    }, time::Duration
 };
 
 use crate::{backup::MinecraftSave, config::Config};
@@ -19,10 +16,6 @@ use eframe::{App, CreationContext, NativeOptions, run_native};
 pub enum Signal {
     Rescan,
     RunBackup,
-    AddStartup,
-    AddCron,
-    RemoveStartup,
-    RemoveCron,
     AddInstance {
         name: String,
         path: PathBuf,
@@ -43,8 +36,8 @@ struct AppSettings {
     backup_root: String,
 }
 
-impl From<Config> for AppSettings {
-    fn from(value: Config) -> Self {
+impl<'a> From<&'a RwLockReadGuard<'a, Config>> for AppSettings {
+    fn from(value: &'a RwLockReadGuard<'a, Config>) -> Self {
         AppSettings {
             autostart: value.autostart,
             cron: value.cron,
@@ -77,6 +70,12 @@ pub struct States {
 
     window_settings_show: bool,
     settings: AppSettings,
+    webdav_window_open: bool,
+    webdav_window_err: String,
+
+    webdav_endpoint: String,
+    webdav_username: String,
+    webdav_password: String,
 
     err_list: Vec<anyhow::Error>,
 }
@@ -120,13 +119,13 @@ impl MineBakApp {
             err,
             states: States::default(),
         };
-        app.states.settings = AppSettings::from(app.config.read().unwrap().clone());
+        app.states.settings = AppSettings::from(&app.config.read().unwrap());
         app
     }
 }
 
 impl App for MineBakApp {
-    fn update(&mut self, ctx: &eframe::egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
         components::draw_ui(ctx, self);
     }
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {

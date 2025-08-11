@@ -9,7 +9,7 @@ pub use save::MinecraftSave;
 use crate::config::Config;
 
 
-use anyhow::Result;
+use anyhow::{Ok, Result};
 
 pub fn rescan_instances(config: &mut Config) -> Result<()> {
     for item in config.instance_roots.iter_mut() {
@@ -18,7 +18,8 @@ pub fn rescan_instances(config: &mut Config) -> Result<()> {
     Ok(())
 }
 
-pub fn run_backup(config: &Config) -> Result<()> {
+pub fn run_backup(config: &Config) -> Result<bool> {
+    let mut res = false;
     log::info!("Starting backup");
     for save in config
         .instance_roots
@@ -27,8 +28,8 @@ pub fn run_backup(config: &Config) -> Result<()> {
         .flatten()
         .flatten()
     {
-        save.run_backup(config.backup_root.clone(), 3)?;
+        res = save.run_backup(config.backup_root.clone(), 3)? | res;
     }
     log::info!("Backup finished");
-    Ok(())
+    Ok(res)
 }
