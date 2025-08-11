@@ -122,7 +122,7 @@ impl MinecraftSave {
                     }
                 }
                 changed = true;
-                archive.append_path(file_path)?;
+                archive.append_file(relative, &mut File::open(file_path)?)?;
                 hashs.insert(relative.to_path_buf(), hash);
             }
         }
