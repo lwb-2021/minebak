@@ -51,6 +51,7 @@ fn main() -> Result<()> {
     let mut res = config::read_config(config_path.clone());
     if res.is_err() {
         log::error!("Failed to read config: {:?}", res);
+        notifica::notify("读配置失败", "").unwrap();
         res = new_config(config_path.clone());
     }
     let mut configuration = res?;
@@ -66,7 +67,6 @@ fn main() -> Result<()> {
         return run_backup(&configuration);
     }
     if arg.run_daemon {
-        // notifica::notify("Minebak已启动", "").unwrap();
         run_daemon(&mut configuration, config_path);
     }
 

@@ -8,9 +8,12 @@ use crate::backup::MinecraftInstanceRoot;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Config {
-    cron: bool,
+    pub autostart: bool,
+    pub cron: bool,
 
     pub duration: Duration,
+    
+    pub services: Vec<CloudService>,
 
     pub instance_roots: Vec<MinecraftInstanceRoot>,
     pub backup_root: PathBuf
@@ -32,4 +35,15 @@ impl Config {
 pub fn read_config(config_path: PathBuf) -> Result<Config>{
     let content = fs::read_to_string(config_path)?;
     Ok(ron::from_str(&content)?)
+}
+
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum CloudService {
+
+}
+
+
+impl CloudService {
+    
 }
