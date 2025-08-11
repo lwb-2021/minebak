@@ -51,7 +51,7 @@ fn main() -> Result<()> {
     let mut res = config::read_config(config_path.clone());
     if res.is_err() {
         log::error!("Failed to read config: {:?}", res);
-        notifica::notify("读配置失败", "").unwrap();
+        notifica::notify("读配置失败，即将新建配置", "").unwrap();
         res = new_config(config_path.clone());
     }
     let mut configuration = res?;
@@ -90,6 +90,9 @@ fn main() -> Result<()> {
 }
 
 fn new_config(config_path: PathBuf) -> Result<config::Config> {
+    if config_path.exists() && config_path.is_file() {
+        fs::copy(config_path.clone(), config_path.with_added_extension("bak"))?;
+    }
     log::warn!("Creating new configuration");
     fs::create_dir_all(config_path.parent().unwrap())?;
     let mut default_config = config::Config::default();
