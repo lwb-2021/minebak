@@ -101,9 +101,9 @@ fn main() -> Result<()> {
     let (sender, receiver) = mpsc::channel();
     let (error_reporter, error_receiver) = mpsc::channel();
     let logic_thread = thread::spawn(move || {
-        let res = run_logic(configuration, receiver, config_path);
-        if res.is_err() {
-            error_reporter.send(res.unwrap_err()).unwrap();
+        while let Err(err) = run_logic(configuration.clone(), &receiver, config_path.clone()) {
+            log::error!("Backend crashed: {}\n{}", err, err.backtrace());
+            error_reporter.send(err).unwrap();
         }
     });
     let res = show_ui(configuration_clone, sender, error_receiver);
@@ -164,7 +164,7 @@ fn run_daemon(configuration: &mut config::Config, config_path: PathBuf) -> ! {
 
 fn run_logic(
     configuration: Arc<RwLock<config::Config>>,
-    receiver: Receiver<Signal>,
+    receiver: &Receiver<Signal>,
     config_path: PathBuf,
 ) -> Result<()> {
     loop {

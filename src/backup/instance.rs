@@ -1,6 +1,6 @@
 use std::{fs, path::PathBuf};
 
-use anyhow::{Ok, Result};
+use anyhow::{bail, Ok, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -109,6 +109,9 @@ impl MinecraftInstance {
     pub fn search_version_isolated(mut path: PathBuf) -> Result<Vec<Self>> {
         let mut result: Vec<Self> = Vec::new();
         path.push("versions");
+        if !path.exists() {
+            bail!("Invaild instance: {:?}", path);
+        }
         for entry in fs::read_dir(&path)? {
             let mut child = entry?.path();
             if child.is_file() {
