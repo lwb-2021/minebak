@@ -1,0 +1,4 @@
+[Desktop Entry]
+Name=MineBak
+Type=Application
+Exec=minebak -d

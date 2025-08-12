@@ -12,7 +12,6 @@ use crate::{backup::MinecraftInstanceRoot, cloud_sync::CloudService};
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
-    
     pub autostart: bool,
     pub cron: bool,
     pub autostart_installed: bool,

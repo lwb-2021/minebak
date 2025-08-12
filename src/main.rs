@@ -20,7 +20,7 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{Error, Ok, Result};
+use anyhow::{Error, Result};
 use backup::{MinecraftInstanceRoot, rescan_instances};
 use clap::Parser;
 
@@ -52,6 +52,7 @@ fn main() -> Result<()> {
     }
 
     init_log()?;
+
     let mut res = config::read_config(config_path.clone());
     if res.is_err() {
         log::error!("Failed to read config: {:?}", res);
@@ -70,6 +71,10 @@ fn main() -> Result<()> {
     for service in configuration.cloud_services.values_mut() {
         service.open_connection()?;
         log::debug!("Connection Opened for {:?}", service);
+    }
+
+    if configuration.autostart && !configuration.autostart_installed {
+        configuration.autostart_installed = register_autostart()?;
     }
 
     run_sync(&configuration)?;
@@ -234,4 +239,42 @@ fn init_log() -> Result<()> {
         )?;
     log4rs::init_config(log4rs_config)?;
     Ok(())
+}
+
+#[cfg(target_os="linux")]
+const DESKTOP_FILE_AUTOSTART: &[u8; 61] = include_bytes!("../resources/autostart.desktop");
+#[cfg(target_os="linux")]
+fn register_autostart() -> Result<bool>{
+    log::info!("Trying to register autostart");
+    if let Some(mut home) = env::home_dir() {
+        home.push(".config");
+        home.push("autostart");
+        if home.exists() {
+            home.push("minebak.desktop");
+            fs::write(&home, DESKTOP_FILE_AUTOSTART)?;
+        }
+        log::info!("Registered autostart in {:?}", home);
+        return Ok(true);
+    }
+    if let Ok(config_home) = env::var("XDG_CONFIG_HOME") {
+        use anyhow::Ok;
+
+        let mut config_home = PathBuf::from(config_home);
+        if config_home.exists() {
+            config_home.push("autostart");
+            if !config_home.exists() {
+                fs::create_dir(&config_home)?
+            }
+            fs::write(&config_home, DESKTOP_FILE_AUTOSTART)?;
+        }
+        log::info!("Registered autostart in {:?}", config_home);
+        return Ok(true);
+    }
+
+    Ok(false)
+}
+
+#[cfg(target_os="windows")]
+fn register_cron() -> Result<()> {
+    todo!()
 }
