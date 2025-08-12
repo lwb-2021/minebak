@@ -49,8 +49,8 @@ impl CloudService {
             } => {
                 log::debug!(
                     "Pushing {} to {}",
+                    file.to_str().unwrap(),
                     &(endpoint.clone() + &remote),
-                    file.to_str().unwrap()
                 );
                 Ok(client
                     .as_ref()
@@ -95,9 +95,9 @@ impl CloudService {
                 init: _,
             } => {
                 log::debug!(
-                    "Pulling {} to {}",
+                    "Pulling {} from {}",
+                    to.to_str().unwrap(),
                     &(endpoint.clone() + &remote),
-                    to.to_str().unwrap()
                 );
                 fs::write(
                     to,
@@ -177,7 +177,7 @@ impl CloudService {
         let mut hash_tmp = env::temp_dir().to_path_buf();
         hash_tmp.push("hash.pull.ron");
         self.pull_file("minebak/hash.ron".to_string(), &hash_tmp)?;
-        let hashs = ron::from_str(&fs::read_to_string(hash_tmp)?)?;
+        let hashs = ron::from_str(&fs::read_to_string(&hash_tmp)?)?;
         if !skip_conflict {
             for ((item, conflict), _) in compare_hash(folder.to_path_buf(), &hashs)? {
                 if !conflict {
@@ -193,7 +193,7 @@ impl CloudService {
         for (path, hash) in hashs {
             self.pull_file(format!("{}/{}", remote_root, hash), &path)?;
         }
-
+        fs::remove_dir(&hash_tmp)?;
         Ok(())
     }
 
@@ -237,6 +237,7 @@ impl CloudService {
                             &(endpoint.to_string() + "minebak/hash.ron"),
                         )?
                         .error_for_status()?;
+                    *init = true;
                 }
             }
             s => todo!("{:?} sync not implemented", s),
