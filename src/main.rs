@@ -66,7 +66,6 @@ fn main() -> Result<()> {
     if arg.duration.is_some() {
         configuration.duration = Duration::from_secs(arg.duration.unwrap());
     }
-    
 
     for service in configuration.cloud_services.values_mut() {
         service.open_connection()?;
@@ -77,14 +76,21 @@ fn main() -> Result<()> {
         configuration.autostart_installed = register_autostart()?;
     }
 
-    run_sync(&configuration)?;
+    if arg.run_sync {
+        run_sync(&configuration).inspect_err(report_err_in_background)?;
+        return Ok(());
+    }
+
     if arg.run_backup {
-        let _ = rescan_instances(&mut configuration).is_err_and(report_err_in_background);
-        let _ = configuration
+        rescan_instances(&mut configuration).inspect_err(report_err_in_background)?;
+        configuration
             .save(config_path)
-            .is_err_and(report_err_in_background);
-        if run_backup(&configuration)? {
-            run_sync(&configuration)?;
+            .inspect_err(report_err_in_background)?;
+        if run_backup(&configuration).unwrap_or_else(|err| {
+            report_err_in_background(&err);
+            false
+        }) {
+            run_sync(&configuration).inspect_err(report_err_in_background)?;
         }
         return Ok(());
     }
@@ -137,27 +143,25 @@ fn new_config(config_path: PathBuf, backup_root: Option<PathBuf>) -> Result<conf
     Ok(default_config)
 }
 
-fn report_err_in_background(err: Error) -> bool {
-    log::error!("{}", err);
+fn report_err_in_background(err: &Error) {
+    log::error!("{}\n{}", err, err.backtrace());
     notifica::notify("Minebak：备份出错", "详情请见日志").unwrap();
-    Err::<(), anyhow::Error>(err).unwrap();
-    true
 }
 
 #[allow(unused)]
 fn run_daemon(configuration: &mut config::Config, config_path: PathBuf) -> ! {
     loop {
-        rescan_instances(configuration).is_err_and(report_err_in_background);
+        rescan_instances(configuration).inspect_err(report_err_in_background);
         configuration
             .save(config_path.clone())
-            .is_err_and(report_err_in_background);
+            .inspect_err(report_err_in_background);
         run_backup(&configuration)
             .map(|res| {
                 if res {
                     run_sync(&configuration);
                 }
             })
-            .is_err_and(report_err_in_background);
+            .inspect_err(report_err_in_background);
         thread::sleep(configuration.duration);
     }
 }
@@ -241,10 +245,10 @@ fn init_log() -> Result<()> {
     Ok(())
 }
 
-#[cfg(target_os="linux")]
+#[cfg(target_os = "linux")]
 const DESKTOP_FILE_AUTOSTART: &[u8; 61] = include_bytes!("../resources/autostart.desktop");
-#[cfg(target_os="linux")]
-fn register_autostart() -> Result<bool>{
+#[cfg(target_os = "linux")]
+fn register_autostart() -> Result<bool> {
     log::info!("Trying to register autostart");
     if let Some(mut home) = env::home_dir() {
         home.push(".config");
@@ -274,7 +278,7 @@ fn register_autostart() -> Result<bool>{
     Ok(false)
 }
 
-#[cfg(target_os="windows")]
+#[cfg(target_os = "windows")]
 fn register_cron() -> Result<()> {
     todo!()
 }

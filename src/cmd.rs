@@ -8,6 +8,9 @@ pub struct Args {
 
     #[arg(short='d', long="run-daemon", help="Run daemon in background")]
     pub run_daemon: bool,
+
+    #[arg(short='s', long="run-sync", help="Run sync in background")]
+    pub run_sync: bool,
     
     #[arg(short='c', long="config-path")]
     pub config_path: Option<PathBuf>,
