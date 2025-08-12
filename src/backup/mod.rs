@@ -1,6 +1,8 @@
 mod instance;
 mod save;
 
+use std::{fs, thread::sleep, time::Duration};
+
 #[allow(unused_imports)]
 pub use instance::{MinecraftInstance, MinecraftInstanceRoot};
 pub use save::MinecraftSave;
@@ -21,6 +23,15 @@ pub fn rescan_instances(config: &mut Config) -> Result<()> {
 pub fn run_backup(config: &Config) -> Result<bool> {
     let mut res = false;
     log::info!("Starting backup");
+    
+    let mut lock_file = config.backup_root.clone();
+    lock_file.push("backup.lock");
+    while lock_file.exists() {
+        log::info!("Waiting for lock {:?}", lock_file);
+        sleep(Duration::from_secs(10));
+    }
+    fs::write(&lock_file, "")?;
+    
     for save in config
         .instance_roots
         .iter()
@@ -31,5 +42,8 @@ pub fn run_backup(config: &Config) -> Result<bool> {
         res = save.run_backup(config.backup_root.clone(), 3)? | res;
     }
     log::info!("Backup finished");
+
+    fs::remove_file(lock_file)?;
+    
     Ok(res)
 }

@@ -3,7 +3,7 @@ use std::{
     env,
     fs::{self},
     os::unix::process::CommandExt,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf}, thread::sleep, time::Duration,
 };
 
 use anyhow::{Ok, Result, anyhow, bail};
@@ -14,6 +14,15 @@ use crate::{config::Config, utils::compare_hash};
 
 pub fn run_sync(config: &Config) -> Result<()> {
     log::info!("Sync started");
+
+    let mut lock_file = config.backup_root.clone();
+    lock_file.push("sync.lock");
+    while lock_file.exists() {
+        log::info!("Waiting for lock {:?}", lock_file);
+        sleep(Duration::from_secs(10));
+    }
+    fs::write(&lock_file, "")?;
+
     if !config.cloud_services.is_empty() {
         for (name, service) in &config.cloud_services {
             log::info!("Sync started to {}", name);
@@ -27,6 +36,9 @@ pub fn run_sync(config: &Config) -> Result<()> {
         }
     }
     log::info!("Sync finished");
+
+    fs::remove_file(lock_file)?;
+
     Ok(())
 }
 
