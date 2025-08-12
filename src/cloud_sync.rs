@@ -9,7 +9,7 @@ use anyhow::{Ok, Result, anyhow, bail};
 use rustydav::{client::Client, prelude::*};
 use serde::{Deserialize, Serialize};
 
-use crate::{config::Config, utils::{compare_hash, generate_sum_for_folder}};
+use crate::{config::Config, utils::compare_hash};
 
 pub fn run_sync(config: &Config) -> Result<()> {
     log::info!("Sync started");

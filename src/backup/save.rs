@@ -152,7 +152,7 @@ impl MinecraftSave {
             if entry.file_type()?.is_file() {
                 let name = entry.file_name().to_string_lossy().to_string();
                 if name.contains(".tar.zst") {
-                    println!("Backup dectected: {}", name);
+                    log::info!("Backup dectected: {}", name);
                     res.push(name.replace(".tar.zst", ""));
                 }
             }

@@ -209,7 +209,6 @@ fn run_logic(
 fn init_log() -> Result<()> {
     let mut log_file_path = env::temp_dir();
     log_file_path.push("minebak.log");
-    println!("{:?}", log_file_path);
     let encoder = Box::new(PatternEncoder::new("{l} - {m}\n"));
     File::create(&log_file_path)?;
     let log_file_appender = FileAppender::builder()
