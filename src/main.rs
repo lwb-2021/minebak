@@ -25,6 +25,7 @@ use backup::{MinecraftInstanceRoot, rescan_instances};
 use clap::Parser;
 
 use cloud_sync::run_sync;
+use config::{default_backup_root, default_duration};
 use log4rs::{
     append::{console::ConsoleAppender, file::FileAppender},
     config::{Appender, Root},
@@ -47,7 +48,7 @@ fn main() -> Result<()> {
         config_root
     };
     if !config_path.exists() {
-        new_config(config_path.clone())?;
+        new_config(config_path.clone(), arg.backup_root.clone())?;
     }
 
     init_log()?;
@@ -55,9 +56,16 @@ fn main() -> Result<()> {
     if res.is_err() {
         log::error!("Failed to read config: {:?}", res);
         notifica::notify("读配置失败，即将新建配置", "").unwrap();
-        res = new_config(config_path.clone());
+        res = new_config(config_path.clone(), arg.backup_root.clone());
     }
     let mut configuration = res?;
+    if arg.backup_root.is_some() {
+        configuration.backup_root = arg.backup_root.unwrap();
+    }
+    if arg.duration.is_some() {
+        configuration.duration = Duration::from_secs(arg.duration.unwrap());
+    }
+    
 
     for service in configuration.cloud_services.values_mut() {
         service.open_connection()?;
@@ -102,28 +110,25 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn new_config(config_path: PathBuf) -> Result<config::Config> {
+fn new_config(config_path: PathBuf, backup_root: Option<PathBuf>) -> Result<config::Config> {
     if config_path.exists() && config_path.is_file() {
         fs::copy(config_path.clone(), config_path.with_added_extension("bak"))?;
     }
     log::warn!("Creating new configuration");
     fs::create_dir_all(config_path.parent().unwrap())?;
-    let mut default_config = config::Config::default();
-    default_config.duration = Duration::from_hours(1);
 
-    let mut minebak_root = config_path
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .to_path_buf();
-    minebak_root.push("backup");
-    if !minebak_root.exists() {
-        fs::create_dir_all(minebak_root.clone())?;
+    let backup_root = backup_root.unwrap_or_else(default_backup_root);
+    if !backup_root.exists() {
+        fs::create_dir_all(backup_root.clone())?;
     }
-    default_config.backup_root = minebak_root;
+    let default_config = config::Config {
+        duration: default_duration(),
+        backup_root,
+        ..Default::default()
+    };
+
     default_config.save(config_path.clone()).unwrap();
-    
+
     Ok(default_config)
 }
 
@@ -141,9 +146,13 @@ fn run_daemon(configuration: &mut config::Config, config_path: PathBuf) -> ! {
         configuration
             .save(config_path.clone())
             .is_err_and(report_err_in_background);
-        run_backup(&configuration).map(|res| if res {
-            run_sync(&configuration);
-        }).is_err_and(report_err_in_background);
+        run_backup(&configuration)
+            .map(|res| {
+                if res {
+                    run_sync(&configuration);
+                }
+            })
+            .is_err_and(report_err_in_background);
         thread::sleep(configuration.duration);
     }
 }
