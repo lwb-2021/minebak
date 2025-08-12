@@ -46,7 +46,8 @@ pub fn compare_hash(root: PathBuf, hashs: &HashMap<PathBuf, String>) -> Result<H
         let relative = path.strip_prefix(&root)?;
         let digest = HEXLOWER.encode(hash(&mut File::open(path)?)?.as_ref());
         if hashs.get(relative) != Some(&digest) {
-            res.insert((path.to_path_buf(), hashs.contains_key(relative)), (hashs.get(relative).cloned(), digest));
+            log::debug!("Hash not match: {:?} vs {:?}, updating", hashs.get(relative), Some(&digest));
+            res.insert((relative.to_path_buf(), hashs.contains_key(relative)), (hashs.get(relative).cloned(), digest));
         }
     }
     Ok(res)

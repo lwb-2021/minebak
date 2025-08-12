@@ -52,7 +52,7 @@
           rustc = rustToolchain;
         }).buildRustPackage rec {
           pname = "${name}";
-          version = "0.2.1";
+          version = "0.2.2";
 
           src = ./.;
 

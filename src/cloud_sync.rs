@@ -5,18 +5,18 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{anyhow, bail, Ok, Result};
+use anyhow::{Ok, Result, anyhow, bail};
 use rustydav::{client::Client, prelude::*};
 use serde::{Deserialize, Serialize};
 
-use crate::{config::Config, utils::compare_hash};
+use crate::{config::Config, utils::{compare_hash, generate_sum_for_folder}};
 
 pub fn run_sync(config: &Config) -> Result<()> {
     log::info!("Sync started");
     if !config.cloud_services.is_empty() {
         for (name, service) in &config.cloud_services {
             log::info!("Sync started to {}", name);
-            service.sync(&config.backup_root, "minebak".to_string(), false, false)?;
+            service.sync(&config.backup_root, "minebak/backup".to_string(), false, false)?;
             log::info!("Sync finished to {}", name);
         }
     }
@@ -99,6 +99,14 @@ impl CloudService {
                     to.to_str().unwrap(),
                     &(endpoint.clone() + &remote),
                 );
+                if !to
+                    .parent()
+                    .map(|x| x.to_path_buf())
+                    .unwrap_or_default()
+                    .exists()
+                {
+                    fs::create_dir_all(to.parent().map(|x| x.to_path_buf()).unwrap_or_default())?;
+                }
                 fs::write(
                     to,
                     client
@@ -144,10 +152,12 @@ impl CloudService {
     ) -> Result<()> {
         let mut hash_tmp = env::temp_dir().to_path_buf();
         hash_tmp.push("hash.pull.ron");
-        self.pull_file("minebak/hash.ron".to_string(), &hash_tmp)?;
+        self.pull_file(format!("{}/hash.ron", remote_root), &hash_tmp)?;
         let mut hashs = ron::from_str(&fs::read_to_string(&hash_tmp)?)?;
-        for ((item, conflict), (old_hash, new_hash)) in compare_hash(folder.to_path_buf(), &hashs)?
+        for ((relative, conflict), (old_hash, new_hash)) in compare_hash(folder.to_path_buf(), &hashs)?
         {
+            let mut item = folder.to_path_buf();
+            item.extend(&relative);
             if conflict && skip_conflict {
                 continue;
             }
@@ -176,10 +186,12 @@ impl CloudService {
     ) -> Result<()> {
         let mut hash_tmp = env::temp_dir().to_path_buf();
         hash_tmp.push("hash.pull.ron");
-        self.pull_file("minebak/hash.ron".to_string(), &hash_tmp)?;
+        self.pull_file(format!("{}/hash.ron", remote_root), &hash_tmp)?;
         let hashs = ron::from_str(&fs::read_to_string(&hash_tmp)?)?;
         if !skip_conflict {
-            for ((item, conflict), _) in compare_hash(folder.to_path_buf(), &hashs)? {
+            for ((relative, conflict), _) in compare_hash(folder.to_path_buf(), &hashs)? {
+                let mut item = folder.to_path_buf();
+                item.extend(&relative);
                 if !conflict {
                     continue;
                 }
@@ -190,10 +202,14 @@ impl CloudService {
                 fs::remove_file(item)?;
             }
         }
-        for (path, hash) in hashs {
-            self.pull_file(format!("{}/{}", remote_root, hash), &path)?;
+        for (relative, hash) in hashs {
+            let mut path = folder.to_path_buf();
+            path.extend(&relative);
+            if !path.exists() {
+                self.pull_file(format!("{}/{}", remote_root, hash), &path)?;
+            }
         }
-        fs::remove_dir(&hash_tmp)?;
+        fs::remove_file(&hash_tmp)?;
         Ok(())
     }
 
@@ -223,6 +239,7 @@ impl CloudService {
                 }
                 if !*init {
                     log::info!("Initalizating WebDAV");
+                    *init = true;
                     client
                         .as_ref()
                         .unwrap()
@@ -237,7 +254,6 @@ impl CloudService {
                             &(endpoint.to_string() + "minebak/hash.ron"),
                         )?
                         .error_for_status()?;
-                    *init = true;
                 }
             }
             s => todo!("{:?} sync not implemented", s),
