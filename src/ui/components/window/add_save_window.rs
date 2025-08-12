@@ -1,9 +1,9 @@
-use crate::ui::{Signal, MineBakApp};
+use crate::ui::{MineBakApp, Signal};
 
 use std::{env, path::PathBuf};
 
-use rfd::FileDialog;
 use eframe::egui::{self, RichText};
+use rfd::FileDialog;
 
 pub(super) fn show(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::containers::Frame) {
     egui::Window::new("添加存档")
@@ -97,11 +97,7 @@ pub(super) fn show(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::conta
                         if env::home_dir().is_some() && path == env::home_dir().unwrap() {
                             name = "Official Launcher".to_string();
                         } else {
-                            let pth = path
-                                .parent()
-                                .map(|p| p.to_path_buf())
-                                .unwrap_or_else(PathBuf::new);
-                            name = pth.to_string_lossy().to_string();
+                            name = path.file_name().unwrap().to_string_lossy().to_string();
                         }
                     }
                     if !name.is_empty() {
@@ -135,10 +131,36 @@ pub(super) fn show(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::conta
                     }
                 }
                 if ui.button("添加版本隔离实例").clicked() {
-                    todo!("添加版本隔离实例")
+                    let path = PathBuf::from(app.states.add_save_window_path_input.clone());
+                    if !path.exists() || !path.is_dir() {
+                        app.states.add_save_window_error_message =
+                            "路径不存在或不是一个文件夹".to_string();
+                    } else {
+                        app.sender
+                            .send(Signal::AddInstance {
+                                name: app.states.add_save_window_name_input.to_string(),
+                                path: path,
+                                multimc: false,
+                                version_isolated: true,
+                            })
+                            .unwrap();
+                    }
                 }
                 if ui.button("添加普通实例").clicked() {
-                    todo!("添加普通实例")
+                    let path = PathBuf::from(app.states.add_save_window_path_input.clone());
+                    if !path.exists() || !path.is_dir() {
+                        app.states.add_save_window_error_message =
+                            "路径不存在或不是一个文件夹".to_string();
+                    } else {
+                        app.sender
+                            .send(Signal::AddInstance {
+                                name: app.states.add_save_window_name_input.to_string(),
+                                path: path,
+                                multimc: false,
+                                version_isolated: false,
+                            })
+                            .unwrap();
+                    }
                 }
             });
         });
