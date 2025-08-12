@@ -11,18 +11,15 @@ pub(super) fn central(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::co
 }
 
 fn instances_list(ui: &mut Ui, app: &mut MineBakApp) {
+    ui.hyperlink_to(
+        "点击此链接汇报bug",
+        "https://github.com/lwb-2021/minebak/issues",
+    );
+    ui.hyperlink_to(
+        "记得提交这个文件",
+        format!("file://{}/minebak.log", env::temp_dir().to_str().unwrap()),
+    );
     for instance_root in (*app.config.read().unwrap()).instance_roots.iter() {
-        ui.hyperlink_to(
-            "点击此链接汇报bug",
-            "https://github.com/lwb-2021/minebak/issues",
-        );
-        ui.hyperlink_to(
-            "记得提交这个文件",
-            format!(
-                "file://{}/minebak.log",
-                env::temp_dir().to_str().unwrap()
-            ),
-        );
         ui.collapsing(instance_root.name.clone(), |ui| {
             for instance in instance_root.instances.iter() {
                 ui.collapsing(instance.name.clone(), |ui| {
