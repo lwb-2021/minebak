@@ -39,11 +39,7 @@ pub(super) fn show(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::conta
                         app.states.webdav_window_open = true;
                     }
                     if ui.button("添加RClone同步").clicked() {
-                        app.config
-                            .write()
-                            .unwrap()
-                            .cloud_services
-                            .insert("RClone".to_string(), CloudService::RClone);
+                        app.states.rclone_window_open = true;
                     }
                 });
 
@@ -69,6 +65,26 @@ pub(super) fn show(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::conta
                     app.states.settings = AppSettings::from(&app.config.read().unwrap())
                 }
             });
+
+            Window::new("添加rclone同步")
+                .open(&mut app.states.webdav_window_open)
+                .show(ui.ctx(), |ui| {
+                    ui.vertical_centered_justified(|ui| {
+                        ui.horizontal(|ui| {
+                            ui.label("Remote");
+                            ui.text_edit_singleline(&mut app.states.webdav_endpoint);
+                        });
+                        if ui.button("应用").clicked() {
+                            app.config.write().unwrap().cloud_services.insert(
+                                app.states.rclone_remote.clone()
+                                    + "@RClone",
+                                CloudService::RClone {
+                                    remote: app.states.rclone_remote.clone()
+                                },
+                            );
+                        }
+                    });
+                });
 
             Window::new("添加WebDAV同步")
                 .open(&mut app.states.webdav_window_open)
@@ -103,7 +119,7 @@ pub(super) fn show(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::conta
                                     username: app.states.webdav_username.clone(),
                                     password: app.states.webdav_password.clone(),
                                     init: false,
-                                    client: None
+                                    client: None,
                                 },
                             );
                         }

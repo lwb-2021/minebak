@@ -2,11 +2,12 @@ use std::{
     collections::HashMap,
     env,
     fs::{self},
+    os::unix::process::CommandExt,
     path::{Path, PathBuf},
 };
 
 use anyhow::{Ok, Result, anyhow, bail};
-use rustydav::{client::Client, prelude::*};
+use rustydav::client::Client;
 use serde::{Deserialize, Serialize};
 
 use crate::{config::Config, utils::compare_hash};
@@ -16,7 +17,12 @@ pub fn run_sync(config: &Config) -> Result<()> {
     if !config.cloud_services.is_empty() {
         for (name, service) in &config.cloud_services {
             log::info!("Sync started to {}", name);
-            service.sync(&config.backup_root, "minebak/backup".to_string(), false, false)?;
+            service.sync(
+                &config.backup_root,
+                "minebak/backup".to_string(),
+                false,
+                false,
+            )?;
             log::info!("Sync finished to {}", name);
         }
     }
@@ -26,7 +32,9 @@ pub fn run_sync(config: &Config) -> Result<()> {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum CloudService {
-    RClone,
+    RClone {
+        remote: String,
+    },
     WebDAV {
         endpoint: String,
         username: String,
@@ -38,7 +46,7 @@ pub enum CloudService {
 }
 
 impl CloudService {
-    pub fn push_file(&self, file: &Path, remote: String) -> Result<Response> {
+    pub fn push_file(&self, file: &Path, remote_file: String) -> Result<()> {
         match &self {
             Self::WebDAV {
                 endpoint,
@@ -50,22 +58,29 @@ impl CloudService {
                 log::debug!(
                     "Pushing {} to {}",
                     file.to_str().unwrap(),
-                    &(endpoint.clone() + &remote),
+                    &(endpoint.clone() + &remote_file),
                 );
-                Ok(client
+                client
                     .as_ref()
                     .unwrap()
-                    .put(fs::read(file)?, &(endpoint.clone() + &remote))?
-                    .error_for_status()?)
+                    .put(fs::read(file)?, &(endpoint.clone() + &remote_file))?
+                    .error_for_status()?;
+                Ok(())
             }
+            Self::RClone { remote } => {
+                std::process::Command::new("rclone")
+                    .arg("copy")
+                    .arg(file.as_os_str())
+                    .arg(format!("{}:{}", remote, remote_file))
+                    .exec()
+                    .downcast()?;
+                Ok(())
+            }
+            #[allow(unreachable_patterns)]
             s => panic!("Unimplemented sync method {:?}", s),
         }
     }
-    pub fn push_hash(
-        &self,
-        content: &HashMap<PathBuf, String>,
-        remote_root: String,
-    ) -> Result<Response> {
+    pub fn push_hash(&self, content: &HashMap<PathBuf, String>, remote_root: String) -> Result<()> {
         match &self {
             Self::WebDAV {
                 endpoint,
@@ -73,19 +88,36 @@ impl CloudService {
                 password: _,
                 client,
                 init: _,
-            } => Ok(client
-                .as_ref()
-                .unwrap()
-                .put(
-                    ron::to_string(&content)?,
-                    &format!("{}{}/hash.ron", endpoint, remote_root),
-                )?
-                .error_for_status()?),
+            } => {
+                client
+                    .as_ref()
+                    .unwrap()
+                    .put(
+                        ron::to_string(&content)?,
+                        &format!("{}{}/hash.ron", endpoint, remote_root),
+                    )?
+                    .error_for_status()?;
+                Ok(())
+            },
+            Self::RClone { remote } => {
+                let mut tmp = env::temp_dir();
+                tmp.push("hash.tmp.ron");
+                fs::write(&tmp, ron::to_string(content)?)?;
+                std::process::Command::new("rclone")
+                    .arg("copy")
+                    .arg(tmp.to_string_lossy().to_string())
+                    .arg(format!("{}:{}/hash.ron", remote, remote_root))
+                    .exec()
+                    .downcast()?;
+                fs::remove_file(tmp)?;
+                Ok(())
+            }
+            #[allow(unreachable_patterns)]
             s => panic!("Unimplemented sync method {:?}", s),
         }
     }
 
-    pub fn pull_file(&self, remote: String, to: &Path) -> Result<()> {
+    pub fn pull_file(&self, remote_file: String, to: &Path) -> Result<()> {
         match &self {
             Self::WebDAV {
                 endpoint,
@@ -97,7 +129,7 @@ impl CloudService {
                 log::debug!(
                     "Pulling {} from {}",
                     to.to_str().unwrap(),
-                    &(endpoint.clone() + &remote),
+                    &(endpoint.clone() + &remote_file),
                 );
                 if !to
                     .parent()
@@ -112,17 +144,27 @@ impl CloudService {
                     client
                         .as_ref()
                         .unwrap()
-                        .get(&(endpoint.clone() + &remote))?
+                        .get(&(endpoint.clone() + &remote_file))?
                         .error_for_status()?
                         .bytes()?,
                 )?;
+                Ok(())
+            },
+            Self::RClone { remote } => {
+                std::process::Command::new("rclone")
+                    .arg("copy")
+                    .arg(format!("{}:{}", remote, remote_file))
+                    .arg(to.as_os_str())
+                    .exec()
+                    .downcast()?;
+                Ok(())
             }
+            #[allow(unreachable_patterns)]
             s => panic!("Unimplemented sync method {:?}", s),
         }
-        Ok(())
     }
 
-    pub fn delete_file(&self, remote: String) -> Result<Response> {
+    pub fn delete_file(&self, remote_file: String) -> Result<()> {
         match &self {
             Self::WebDAV {
                 endpoint,
@@ -131,13 +173,23 @@ impl CloudService {
                 client,
                 init: _,
             } => {
-                log::debug!("Deleting {}", remote);
-                Ok(client
+                log::debug!("Deleting {}", remote_file);
+                client
                     .as_ref()
                     .unwrap()
-                    .delete(&(endpoint.clone() + &remote))?
-                    .error_for_status()?)
+                    .delete(&(endpoint.clone() + &remote_file))?
+                    .error_for_status()?;
+                Ok(())
+            },
+            Self::RClone { remote } => {
+                std::process::Command::new("rclone")
+                    .arg("delete")
+                    .arg(format!("{}:{}", remote, remote_file))
+                    .exec()
+                    .downcast()?;
+                Ok(())
             }
+            #[allow(unreachable_patterns)]
             s => panic!("Unimplemented sync method {:?}", s),
         }
     }
@@ -154,7 +206,8 @@ impl CloudService {
         hash_tmp.push("hash.pull.ron");
         self.pull_file(format!("{}/hash.ron", remote_root), &hash_tmp)?;
         let mut hashs = ron::from_str(&fs::read_to_string(&hash_tmp)?)?;
-        for ((relative, conflict), (old_hash, new_hash)) in compare_hash(folder.to_path_buf(), &hashs)?
+        for ((relative, conflict), (old_hash, new_hash)) in
+            compare_hash(folder.to_path_buf(), &hashs)?
         {
             let mut item = folder.to_path_buf();
             item.extend(&relative);

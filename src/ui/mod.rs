@@ -77,6 +77,9 @@ pub struct States {
     webdav_username: String,
     webdav_password: String,
 
+    rclone_window_open: bool,
+    rclone_remote: String,
+
     err_list: Vec<anyhow::Error>,
 }
 
