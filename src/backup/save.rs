@@ -101,8 +101,7 @@ impl MinecraftSave {
             fs::remove_file(backup_file)?;
             return Ok(true);
         }
-
-        let mut hashs: HashMap<PathBuf, String> = ron::from_str(&fs::read_to_string(last_hash)?)?;
+        let mut hashs: HashMap<PathBuf, String> = ron::from_str(&fs::read_to_string(&last_hash)?)?;
         let mut archive = tar::Builder::new(File::create(&backup_file)?);
         let mut changed = false;
         for item in WalkDir::new(&self.path).sort_by_file_name() {
@@ -111,17 +110,8 @@ impl MinecraftSave {
             let relative = file_path.strip_prefix(&self.path)?;
             if file_path.is_file() {
                 let hash = HEXLOWER.encode(hash(&mut File::open(file_path)?)?.as_ref());
-
-                if let Some(last) = hashs.get(&relative.to_path_buf()) {
-                    // log::debug!(
-                    //     "Comparing hash of {}: {} & {}",
-                    //     relative.to_str().unwrap(),
-                    //     hash,
-                    //     last
-                    // );
-                    if last.to_string() == hash {
-                        continue;
-                    }
+                if hashs.get(relative) == Some(&hash) {
+                    continue;
                 }
                 changed = true;
                 archive.append_file(relative, &mut File::open(file_path)?)?;
@@ -136,6 +126,7 @@ impl MinecraftSave {
                 &mut File::create(backup_file.with_added_extension("zst"))?,
                 compress_level,
             )?;
+            fs::write(last_hash, ron::to_string(&hashs)?.as_bytes())?;
         } else {
             log::info!("File not changed");
         }

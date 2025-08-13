@@ -44,6 +44,6 @@ pub fn run_backup(config: &Config) -> Result<bool> {
     log::info!("Backup finished");
 
     fs::remove_file(lock_file)?;
-    
+
     Ok(res)
 }
