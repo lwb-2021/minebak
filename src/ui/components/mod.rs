@@ -1,7 +1,7 @@
 mod central;
 mod window;
 
-use super::{MineBakApp, Signal};
+use super::{theming, MineBakApp, Signal};
 
 use eframe::egui::{self, CornerRadius, Frame, Margin, panel::Side};
 
@@ -39,6 +39,9 @@ fn action_buttons(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::contai
                 }
                 if ui.button("添加存档").clicked() {
                     app.states.window_add_save_show = true;
+                }
+                if ui.button("切换主题").clicked() {
+                    theming::switch_theme(ctx, &mut app.states);
                 }
                 if ui.button("设置").clicked() {
                     app.states.window_settings_show = true;

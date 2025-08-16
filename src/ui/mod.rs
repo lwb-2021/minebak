@@ -10,6 +10,7 @@ use std::{
 use crate::{backup::MinecraftSave, config::Config};
 
 use anyhow::Result;
+use catppuccin_egui::Theme;
 use eframe::{App, CreationContext, NativeOptions, run_native};
 
 #[derive(Debug, Clone)]
@@ -58,6 +59,8 @@ impl AppSettings {
 
 #[derive(Debug, Default)]
 pub struct States {
+    theme_index: u8,
+
     window_add_save_show: bool,
     add_save_window_error_message: String,
     add_save_window_path_input: String,
