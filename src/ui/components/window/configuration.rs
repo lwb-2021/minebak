@@ -3,7 +3,7 @@ use crate::{
     ui::{AppSettings, MineBakApp},
 };
 
-use eframe::egui::{self, RichText, Window};
+use eframe::egui::{self, CollapsingHeader, RichText, Window};
 use rfd::FileDialog;
 
 pub(super) fn show(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::containers::Frame) {
@@ -11,7 +11,7 @@ pub(super) fn show(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::conta
         .frame(frame)
         .open(&mut app.states.window_settings_show)
         .show(ctx, |ui| {
-            ui.collapsing("基础", |ui| {
+            CollapsingHeader::new("基础").default_open(true).show_unindented(ui ,|ui| {
                 ui.horizontal(|ui| {
                     ui.label("备份间隔(分钟)");
                     ui.add(egui::Slider::new(
@@ -66,8 +66,8 @@ pub(super) fn show(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::conta
                 }
             });
 
-            Window::new("添加rclone同步")
-                .open(&mut app.states.webdav_window_open)
+            Window::new("添加RClone同步")
+                .open(&mut app.states.rclone_window_open)
                 .show(ui.ctx(), |ui| {
                     ui.vertical_centered_justified(|ui| {
                         ui.horizontal(|ui| {
@@ -110,10 +110,11 @@ pub(super) fn show(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::conta
                                 .color(ui.ctx().style().visuals.error_fg_color),
                         );
                         if ui.button("应用").clicked() {
+                            let mut url_split= app.states.webdav_endpoint.split("/");
                             app.config.write().unwrap().cloud_services.insert(
                                 app.states.webdav_username.clone()
                                     + "@"
-                                    + &app.states.webdav_endpoint,
+                                    + url_split.nth(2).unwrap(),
                                 CloudService::WebDAV {
                                     endpoint: app.states.webdav_endpoint.clone(),
                                     username: app.states.webdav_username.clone(),

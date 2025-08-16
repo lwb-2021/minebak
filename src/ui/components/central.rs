@@ -2,15 +2,16 @@ use std::env;
 
 use crate::ui::MineBakApp;
 
-use eframe::egui::{self, ImageSource, RichText, Ui};
+use eframe::egui::{self, CollapsingHeader, Image, RichText, Ui};
 
+#[inline]
 pub(super) fn central(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::containers::Frame) {
     egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
-        instances_list(ui, app);
+        content(ui, app);
     });
 }
-
-fn instances_list(ui: &mut Ui, app: &mut MineBakApp) {
+#[inline]
+fn content(ui: &mut Ui, app: &mut MineBakApp) {
     ui.hyperlink_to(
         "点击此链接汇报bug",
         "https://github.com/lwb-2021/minebak/issues",
@@ -19,36 +20,74 @@ fn instances_list(ui: &mut Ui, app: &mut MineBakApp) {
         "记得提交这个文件",
         format!("file://{}/minebak.log", env::temp_dir().to_str().unwrap()),
     );
+    CollapsingHeader::new("存档列表")
+        .default_open(true)
+        .show(ui, |ui| {
+            save_list(ui, app);
+        });
+}
+
+#[inline]
+fn save_list(ui: &mut Ui, app: &mut MineBakApp) {
     for instance_root in (*app.config.read().unwrap()).instance_roots.iter() {
-        ui.collapsing(instance_root.name.clone(), |ui| {
-            for instance in instance_root.instances.iter() {
-                ui.collapsing(instance.name.clone(), |ui| {
-                    for save in instance.saves.iter() {
-                        ui.group(|ui| {
-                            ui.horizontal(|ui| {
-                                if save.image.is_some() {
-                                    ui.image(ImageSource::Uri(
-                                        ("file://".to_string()
+        for instance in instance_root.instances.iter() {
+            for save in instance.saves.iter() {
+                egui::Frame::group(&ui.ctx().style())
+                    .fill(ui.ctx().style().visuals.faint_bg_color)
+                    .corner_radius(4)
+                    .outer_margin(4)
+                    .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            if save.image.is_some() {
+                                ui.add(
+                                    Image::new(
+                                        "file://".to_string()
                                             + &save
                                                 .image
                                                 .as_ref()
                                                 .unwrap()
                                                 .to_string_lossy()
-                                                .to_string())
-                                            .into(),
-                                    ));
-                                }
-                                ui.heading(RichText::new(save.name.clone()));
-                                if ui.button("恢复").clicked() {
-                                    app.states.window_recover_refreshed = false;
-                                    app.states.recover_current_save = Some(save.clone());
-                                    app.states.window_recover_show = true;
-                                }
-                            })
+                                                .to_string(),
+                                    )
+                                    .fit_to_exact_size((64.0, 64.0).into())
+                                    .corner_radius(4),
+                                );
+                            } else {
+                                ui.add(
+                                    Image::new("file://")
+                                        .fit_to_exact_size((64.0, 64.0).into())
+                                        .corner_radius(4),
+                                );
+                            }
+                            ui.vertical_centered_justified(|ui| {
+                                ui.horizontal(|ui| {
+                                    ui.label(RichText::new(save.name.clone()).size(16.0));
+                                    ui.weak(format!("{}/{}", instance_root.name, instance.name));
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.label(&save.description)
+                                });
+                                ui.columns(3, |ui| {
+                                    ui[0].vertical_centered_justified(|ui| {
+                                        if ui.button("编辑（TODO）").clicked() {
+                                            
+                                        }
+                                    });
+                                    ui[1].vertical_centered_justified(|ui| {
+                                        if ui.button("备份（TODO）").clicked() {}
+                                    });
+                                    ui[2].vertical_centered_justified(|ui| {
+                                        if ui.button("恢复").clicked() {
+                                            app.states.window_recover_refreshed = false;
+                                            app.states.recover_current_save = Some(save.clone());
+                                            app.states.window_recover_show = true;
+                                        }
+                                    });
+                                });
+                            });
                         });
-                    }
-                });
+                    });
             }
-        });
+        }
     }
 }

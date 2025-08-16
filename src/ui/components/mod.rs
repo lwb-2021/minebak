@@ -6,24 +6,24 @@ use super::{MineBakApp, Signal};
 use eframe::egui::{self, CornerRadius, Frame, Margin, panel::Side};
 
 pub(super) fn draw_ui(ctx: &egui::Context, app: &mut MineBakApp) {
+    const PADDING: i8 = 12;
     let frame_central = egui::containers::Frame {
-        inner_margin: Margin::same(12),
+        inner_margin: Margin::same(PADDING),
         ..Frame::central_panel(&ctx.style())
     };
     let frame_side = egui::containers::Frame {
-        inner_margin: Margin::same(12),
+        inner_margin: Margin::same(PADDING),
         ..Frame::side_top_panel(&ctx.style())
     };
 
     let frame_window = egui::containers::Frame {
-        inner_margin: Margin::same(12),
+        inner_margin: Margin::same(PADDING),
         corner_radius: CornerRadius::same(8),
         ..Frame::window(&ctx.style())
     };
     window::show_windows(ctx, app, frame_window);
-
-    central::central(ctx, app, frame_central);
     action_buttons(ctx, app, frame_side);
+    central::central(ctx, app, frame_central);
 }
 
 fn action_buttons(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::containers::Frame) {

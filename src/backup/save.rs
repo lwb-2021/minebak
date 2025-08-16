@@ -15,12 +15,14 @@ use walkdir::WalkDir;
 
 use crate::utils::hash;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct MinecraftSave {
     pub instance_name: String,
     pub name: String,
     pub image: Option<PathBuf>,
     path: PathBuf,
+    pub description: String,
 }
 
 impl MinecraftSave {
@@ -50,6 +52,7 @@ impl MinecraftSave {
                     .to_string_lossy()
                     .to_string(),
                 image,
+                description: String::new(),
                 path: child,
                 instance_name: instance_name.clone(),
             });
