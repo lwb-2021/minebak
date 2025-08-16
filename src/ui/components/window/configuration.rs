@@ -11,30 +11,32 @@ pub(super) fn show(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::conta
         .frame(frame)
         .open(&mut app.states.window_settings_show)
         .show(ctx, |ui| {
-            CollapsingHeader::new("基础").default_open(true).show_unindented(ui ,|ui| {
-                ui.horizontal(|ui| {
-                    ui.label("备份间隔(分钟)");
-                    ui.add(egui::Slider::new(
-                        &mut app.states.settings.backup_duration_mins,
-                        10..=360,
-                    ));
-                });
+            CollapsingHeader::new("基础")
+                .default_open(true)
+                .show_unindented(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label("备份间隔(分钟)");
+                        ui.add(egui::Slider::new(
+                            &mut app.states.settings.backup_duration_mins,
+                            10..=360,
+                        ));
+                    });
 
-                ui.horizontal(|ui| {
-                    ui.label("备份文件夹");
-                    ui.text_edit_singleline(&mut app.states.settings.backup_root);
-                    if ui.button("浏览").clicked() {
-                        if let Some(folder) =
-                            FileDialog::new().set_title("选择备份文件夹").pick_folder()
-                        {
-                            app.states.settings.backup_root = folder.to_string_lossy().to_string();
+                    ui.horizontal(|ui| {
+                        ui.label("备份文件夹");
+                        ui.text_edit_singleline(&mut app.states.settings.backup_root);
+                        if ui.button("浏览").clicked() {
+                            if let Some(folder) =
+                                FileDialog::new().set_title("选择备份文件夹").pick_folder()
+                            {
+                                app.states.settings.backup_root =
+                                    folder.to_string_lossy().to_string();
+                            }
                         }
-                    }
+                    });
                 });
-            });
             ui.collapsing("云同步", |ui| {
                 ui.horizontal(|ui| {
-                    ui.label("警告：云同步可能有成吨的bug");
                     if ui.button("添加WebDAV").clicked() {
                         app.states.webdav_window_open = true;
                     }
@@ -57,13 +59,17 @@ pub(super) fn show(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::conta
                     }
                 });
             });
-            ui.horizontal(|ui| {
-                if ui.button("应用").clicked() {
-                    app.states.settings.save(&mut app.config.write().unwrap());
-                }
-                if ui.button("撤销").clicked() {
-                    app.states.settings = AppSettings::from(&app.config.read().unwrap())
-                }
+            ui.columns(2, |ui| {
+                ui[0].vertical_centered_justified(|ui| {
+                    if ui.button("应用").clicked() {
+                        app.states.settings.save(&mut app.config.write().unwrap());
+                    }
+                });
+                ui[1].vertical_centered_justified(|ui| {
+                    if ui.button("撤销").clicked() {
+                        app.states.settings = AppSettings::from(&app.config.read().unwrap())
+                    }
+                });
             });
 
             Window::new("添加RClone同步")
@@ -76,10 +82,9 @@ pub(super) fn show(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::conta
                         });
                         if ui.button("应用").clicked() {
                             app.config.write().unwrap().cloud_services.insert(
-                                app.states.rclone_remote.clone()
-                                    + "@RClone",
+                                app.states.rclone_remote.clone() + "@RClone",
                                 CloudService::RClone {
-                                    remote: app.states.rclone_remote.clone()
+                                    remote: app.states.rclone_remote.clone(),
                                 },
                             );
                         }
@@ -110,7 +115,7 @@ pub(super) fn show(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::conta
                                 .color(ui.ctx().style().visuals.error_fg_color),
                         );
                         if ui.button("应用").clicked() {
-                            let mut url_split= app.states.webdav_endpoint.split("/");
+                            let mut url_split = app.states.webdav_endpoint.split("/");
                             app.config.write().unwrap().cloud_services.insert(
                                 app.states.webdav_username.clone()
                                     + "@"

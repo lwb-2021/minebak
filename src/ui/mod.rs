@@ -10,7 +10,6 @@ use std::{
 use crate::{backup::MinecraftSave, config::Config};
 
 use anyhow::Result;
-use catppuccin_egui::Theme;
 use eframe::{App, CreationContext, NativeOptions, run_native};
 
 #[derive(Debug, Clone)]
@@ -27,6 +26,7 @@ pub enum Signal {
         save: MinecraftSave,
         timestamp: String,
     },
+    SaveConfig,
     Exit,
 }
 #[derive(Default, Debug)]
@@ -82,6 +82,10 @@ pub struct States {
 
     rclone_window_open: bool,
     rclone_remote: String,
+
+    save_edit_window_open: bool,
+    edit_save_index: [usize;3],
+    edit_save_info: MinecraftSave,
 
     err_list: Vec<anyhow::Error>,
 }

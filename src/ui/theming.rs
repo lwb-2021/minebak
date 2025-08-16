@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use eframe::{
     CreationContext,
-    egui::{self, Context, FontData, FontTweak, Theme},
+    egui::{self, Context, FontData, FontTweak},
 };
 
 use super::States;

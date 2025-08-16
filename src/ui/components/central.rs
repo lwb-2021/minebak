@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, iter::zip};
 
 use crate::ui::MineBakApp;
 
@@ -29,9 +29,10 @@ fn content(ui: &mut Ui, app: &mut MineBakApp) {
 
 #[inline]
 fn save_list(ui: &mut Ui, app: &mut MineBakApp) {
-    for instance_root in (*app.config.read().unwrap()).instance_roots.iter() {
-        for instance in instance_root.instances.iter() {
-            for save in instance.saves.iter() {
+    let instance_roots = &app.config.read().unwrap().instance_roots;
+    for (instance_root, i1) in zip(instance_roots.iter(), 0..instance_roots.len()) {
+        for (instance, i2) in zip(instance_root.instances.iter(), 0..instance_root.instances.len()) {
+            for (save, i3) in zip(instance.saves.iter(), 0..instance.saves.len()) {
                 egui::Frame::group(&ui.ctx().style())
                     .fill(ui.ctx().style().visuals.faint_bg_color)
                     .corner_radius(4)
@@ -70,7 +71,9 @@ fn save_list(ui: &mut Ui, app: &mut MineBakApp) {
                                 ui.columns(3, |ui| {
                                     ui[0].vertical_centered_justified(|ui| {
                                         if ui.button("编辑（TODO）").clicked() {
-                                            
+                                            app.states.edit_save_index = [i1, i2, i3];  
+                                            app.states.edit_save_info = save.clone();
+                                            app.states.save_edit_window_open = true;
                                         }
                                     });
                                     ui[1].vertical_centered_justified(|ui| {

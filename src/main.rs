@@ -177,6 +177,9 @@ fn run_logic(
                 Signal::Rescan => {
                     backup::rescan_instances(&mut configuration.try_write().unwrap())?;
                 }
+                Signal::SaveConfig => {
+                    configuration.read().unwrap().save(config_path.clone())?;
+                }
                 Signal::Exit => {
                     configuration.read().unwrap().save(config_path.clone())?;
                     break;

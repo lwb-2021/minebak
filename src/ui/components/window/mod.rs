@@ -1,6 +1,7 @@
 mod add_save_window;
 mod configuration;
 mod recover_window;
+mod save_edit_window;
 
 use crate::ui::MineBakApp;
 
@@ -16,7 +17,8 @@ pub(super) fn show_windows(
 ) {
     add_save_window::show(ctx, app, frame.clone());
     configuration::show(ctx, app, frame.clone());
-    recover_window::show(ctx, app, frame);
+    recover_window::show(ctx, app, frame.clone());
+    save_edit_window::show(ctx, app, frame);
 }
 
 
