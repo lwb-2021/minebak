@@ -61,6 +61,8 @@ impl AppSettings {
 pub struct States {
     theme_index: u8,
 
+    central_panel: u8,
+
     window_add_save_show: bool,
     add_save_window_error_message: String,
     add_save_window_path_input: String,

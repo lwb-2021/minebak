@@ -5,13 +5,7 @@ use crate::ui::MineBakApp;
 use eframe::egui::{self, CollapsingHeader, Image, RichText, Ui};
 
 #[inline]
-pub(super) fn central(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::containers::Frame) {
-    egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
-        content(ui, app);
-    });
-}
-#[inline]
-fn content(ui: &mut Ui, app: &mut MineBakApp) {
+pub(super) fn content(ui: &mut Ui, app: &mut MineBakApp) {
     ui.hyperlink_to(
         "点击此链接汇报bug",
         "https://github.com/lwb-2021/minebak/issues",
