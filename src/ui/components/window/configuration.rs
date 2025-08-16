@@ -23,6 +23,14 @@ pub(super) fn show(ctx: &egui::Context, app: &mut MineBakApp, frame: egui::conta
                     });
 
                     ui.horizontal(|ui| {
+                        ui.label("压缩等级");
+                        ui.add(egui::Slider::new(
+                            &mut app.states.settings.compress_level,
+                            1..=19,
+                        ))
+                    });
+
+                    ui.horizontal(|ui| {
                         ui.label("备份文件夹");
                         ui.text_edit_singleline(&mut app.states.settings.backup_root);
                         if ui.button("浏览").clicked() {

@@ -189,6 +189,14 @@ fn run_logic(
                         run_sync(&configuration.read().unwrap())?;
                     }
                 }
+                Signal::BackupSingleSave(save) => {
+                    if save.run_backup(
+                        configuration.read().unwrap().backup_root.clone(),
+                        configuration.read().unwrap().compress_level,
+                    )? {
+                        run_sync(&configuration.read().unwrap())?;
+                    }
+                }
                 Signal::AddInstance {
                     name,
                     path,

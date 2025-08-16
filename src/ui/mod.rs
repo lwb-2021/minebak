@@ -16,6 +16,7 @@ use eframe::{App, CreationContext, NativeOptions, run_native};
 pub enum Signal {
     Rescan,
     RunBackup,
+    BackupSingleSave(MinecraftSave),
     AddInstance {
         name: String,
         path: PathBuf,
@@ -34,6 +35,7 @@ struct AppSettings {
     autostart: bool,
     cron: bool,
     backup_duration_mins: u64,
+    compress_level: i32,
     backup_root: String,
 }
 
@@ -43,16 +45,18 @@ impl<'a> From<&'a RwLockReadGuard<'a, Config>> for AppSettings {
             autostart: value.autostart,
             cron: value.cron,
             backup_duration_mins: value.duration.as_secs_f64() as u64 / 60,
+            compress_level: value.compress_level,
             backup_root: value.backup_root.to_string_lossy().to_string()
         }
     }
 }
 
 impl AppSettings {
-    pub fn save(&mut self, config: &mut Config) {
+    pub fn save(&self, config: &mut Config) {
         config.autostart = self.autostart;
         config.cron = self.cron;
         config.duration = Duration::from_mins(self.backup_duration_mins);
+        config.compress_level = self.compress_level;
         config.backup_root = PathBuf::from(self.backup_root.clone());
     }
 }

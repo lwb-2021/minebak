@@ -19,6 +19,7 @@ pub struct Config {
 
     #[serde(default = "default_duration")]
     pub duration: Duration,
+    pub compress_level: i32,
 
 
     pub cloud_services: HashMap<String, CloudService>,

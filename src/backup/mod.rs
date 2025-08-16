@@ -39,7 +39,7 @@ pub fn run_backup(config: &Config) -> Result<bool> {
         .flatten()
         .flatten()
     {
-        res = save.run_backup(config.backup_root.clone(), 3)? | res;
+        res = save.run_backup(config.backup_root.clone(), config.compress_level)? | res;
     }
     log::info!("Backup finished");
 

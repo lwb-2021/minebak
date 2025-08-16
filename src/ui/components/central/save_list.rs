@@ -1,6 +1,6 @@
 use std::{env, iter::zip};
 
-use crate::ui::MineBakApp;
+use crate::ui::{MineBakApp, Signal};
 
 use eframe::egui::{self, CollapsingHeader, Image, RichText, Ui};
 
@@ -64,14 +64,16 @@ fn save_list(ui: &mut Ui, app: &mut MineBakApp) {
                                 });
                                 ui.columns(3, |ui| {
                                     ui[0].vertical_centered_justified(|ui| {
-                                        if ui.button("编辑（TODO）").clicked() {
+                                        if ui.button("编辑").clicked() {
                                             app.states.edit_save_index = [i1, i2, i3];  
                                             app.states.edit_save_info = save.clone();
                                             app.states.save_edit_window_open = true;
                                         }
                                     });
                                     ui[1].vertical_centered_justified(|ui| {
-                                        if ui.button("备份（TODO）").clicked() {}
+                                        if ui.button("备份").clicked() {
+                                            app.sender.send(Signal::BackupSingleSave(save.clone())).unwrap();
+                                        }
                                     });
                                     ui[2].vertical_centered_justified(|ui| {
                                         if ui.button("恢复").clicked() {
