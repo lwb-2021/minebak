@@ -47,29 +47,32 @@
         };
 
         # 构建应用 (nix build)
-        packages.default = (pkgs.makeRustPlatform {
-          cargo = rustToolchain;
-          rustc = rustToolchain;
-        }).buildRustPackage rec {
-          pname = "${name}";
-          version = "0.6.0";
+        packages = rec {
+          minebak = (pkgs.makeRustPlatform {
+            cargo = rustToolchain;
+            rustc = rustToolchain;
+          }).buildRustPackage rec {
+            pname = "${name}";
+            version = "0.6.0";
 
-          src = ./.;
+            src = ./.;
 
-          cargoLock.lockFile = src + /Cargo.lock;
-          
-          cargoSha256 = nixpkgs.lib.fakeSha256;
-          nativeBuildInputs = with pkgs;[
-            pkg-config
+            cargoLock.lockFile = src + /Cargo.lock;
+            
+            cargoSha256 = nixpkgs.lib.fakeSha256;
+            nativeBuildInputs = with pkgs;[
+              pkg-config
 
-            makeWrapper
-          ];
-          buildInputs = nativeDeps;
-          RUSTFLAGS = "--cfg=web_sys_unstable_apis";
+              makeWrapper
+            ];
+            buildInputs = nativeDeps;
+            RUSTFLAGS = "--cfg=web_sys_unstable_apis";
 
-          postInstall = ''
-            wrapProgram "$out/bin/${name}" --prefix LD_LIBRARY_PATH : "${pkgs.lib.makeLibraryPath nativeDeps}"
-          '';
+            postInstall = ''
+              wrapProgram "$out/bin/${name}" --prefix LD_LIBRARY_PATH : "${pkgs.lib.makeLibraryPath nativeDeps}"
+            '';
+          };
+          default = minebak;
         };
 
         # 应用运行器 (nix run)
