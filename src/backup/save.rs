@@ -1,9 +1,5 @@
 use std::{
-    collections::HashMap,
-    fs::{self, File},
-    io::{Read, Write},
-    path::PathBuf,
-    time::{SystemTime, UNIX_EPOCH},
+    collections::HashMap, fs::{self, File}, io::{Read, Write}, path::PathBuf, thread, time::{Duration, SystemTime, UNIX_EPOCH}
 };
 
 use anyhow::{Ok, Result, anyhow};
@@ -82,18 +78,20 @@ impl MinecraftSave {
             let mut hashs: HashMap<PathBuf, String> = HashMap::new();
 
             let mut archive = tar::Builder::new(File::create(&backup_file)?);
-            let mut header = tar::Header::new_gnu();
             for item in WalkDir::new(&self.path).sort_by_file_name() {
                 let entry = item?;
                 let file_path = entry.path();
                 let relative = file_path.strip_prefix(&self.path)?;
                 log::debug!("Adding file {}", relative.to_string_lossy());
                 if file_path.is_file() {
+                    let mut header = tar::Header::new_gnu();
+                    header.set_mode(0o777);
                     let mut writer = archive.append_writer(&mut header, relative)?;
                     let hash = Self::hash_and_write(&mut File::open(file_path)?, &mut writer)?;
                     hashs.insert(relative.to_path_buf(), HEXLOWER.encode(hash.as_ref()));
                 }
             }
+            
             fs::write(last_hash, ron::to_string(&hashs)?.as_bytes())?;
             log::info!("Compressing");
             zstd::stream::copy_encode(
@@ -160,7 +158,6 @@ impl MinecraftSave {
 
         let mut backups = self.list_backups(backup_root)?;
         backups.sort();
-        backups.reverse();
 
         let mut recover_root = self.path.clone();
         recover_root.pop();
@@ -174,24 +171,20 @@ impl MinecraftSave {
         );
 
         log::info!("Recovery started");
-        let mut start_recovery = false;
         for item in backups {
-            log::debug!("{} {}", item, timestamp);
             if item == timestamp {
-                start_recovery = true;
+                break;
             }
-            if start_recovery {
-                log::info!("Recovering: {} to {}", item, recover_root.to_string_lossy());
-                backup_folder.push(timestamp.clone() + ".tar.zst");
 
-                let file = File::open(backup_folder.clone())?;
-                let decoder = zstd::Decoder::new(file)?;
-                let mut archive = Archive::new(decoder);
-                archive.set_overwrite(false);
-                archive.unpack(recover_root.clone())?;
+            log::info!("Recovering: {} to {}", item, recover_root.to_string_lossy());
+            backup_folder.push(timestamp.clone() + ".tar.zst");
 
-                backup_folder.pop();
-            }
+            let file = File::open(backup_folder.clone())?;
+            let decoder = zstd::Decoder::new(file)?;
+            let mut archive = Archive::new(decoder);
+            archive.set_overwrite(true);
+            archive.unpack(recover_root.clone())?;
+            backup_folder.pop();
         }
         log::info!("Recovery finished");
         Ok(())
