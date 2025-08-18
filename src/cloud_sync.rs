@@ -23,23 +23,30 @@ pub fn run_sync(config: &Config) -> Result<()> {
     }
     fs::write(&lock_file, "")?;
 
+    let mut res = Ok(());
     if !config.cloud_services.is_empty() {
         for (name, service) in &config.cloud_services {
             log::info!("Sync started to {}", name);
-            service.sync(
+            let result = service.sync(
                 &config.backup_root,
                 "minebak/backup".to_string(),
+                true,
                 false,
-                false,
-            )?;
-            log::info!("Sync finished to {}", name);
+            );
+            if result.is_err() {
+                log::error!("Sync failed to {}: {}", name, result.as_ref().unwrap_err());
+                notifica::notify("MineBak: 同步失败", &format!("同步到远程 {} 失败", name.split("@").last().unwrap()))?;
+                res = result;
+            } else {
+                log::info!("Sync finished to {}", name);
+            }
         }
     }
     log::info!("Sync finished");
 
     fs::remove_file(lock_file)?;
 
-    Ok(())
+    res
 }
 
 #[derive(Debug, Serialize, Deserialize)]

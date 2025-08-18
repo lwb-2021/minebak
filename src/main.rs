@@ -145,7 +145,7 @@ fn new_config(config_path: PathBuf, backup_root: Option<PathBuf>) -> Result<conf
 
 fn report_err_in_background(err: &Error) {
     log::error!("{}\n{}", err, err.backtrace());
-    notifica::notify("Minebak：备份出错", "详情请见日志").unwrap();
+    notifica::notify("MineBak: 备份出错", "详情请见日志").unwrap();
 }
 
 #[allow(unused)]
@@ -158,10 +158,15 @@ fn run_daemon(configuration: &mut config::Config, config_path: PathBuf) -> ! {
         run_backup(&configuration)
             .map(|res| {
                 if res {
-                    run_sync(&configuration);
+                    run_sync(&configuration)
+                } else {
+                    Ok(())
                 }
             })
-            .inspect_err(report_err_in_background);
+            .inspect_err(report_err_in_background)
+            .map(|res| {
+                res.inspect_err(report_err_in_background);
+            });
         thread::sleep(configuration.duration);
     }
 }
