@@ -86,6 +86,9 @@ impl MinecraftSave {
                 if file_path.is_file() {
                     let mut header = tar::Header::new_gnu();
                     header.set_mode(0o777);
+                    header.set_size(fs::metadata(file_path)?.len());
+                    header.set_mtime(fs::metadata(file_path)?.modified()?.duration_since(UNIX_EPOCH)?.as_secs() as u64);
+                    header.set_cksum();
                     let mut writer = archive.append_writer(&mut header, relative)?;
                     let hash = Self::hash_and_write(&mut File::open(file_path)?, &mut writer)?;
                     hashs.insert(relative.to_path_buf(), HEXLOWER.encode(hash.as_ref()));
