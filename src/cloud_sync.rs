@@ -3,7 +3,9 @@ use std::{
     env,
     fs::{self},
     os::unix::process::CommandExt,
-    path::{Path, PathBuf}, thread::sleep, time::Duration,
+    path::{Path, PathBuf},
+    thread::sleep,
+    time::Duration,
 };
 
 use anyhow::{Ok, Result, anyhow, bail};
@@ -35,7 +37,10 @@ pub fn run_sync(config: &Config) -> Result<()> {
             );
             if result.is_err() {
                 log::error!("Sync failed to {}: {}", name, result.as_ref().unwrap_err());
-                notifica::notify("MineBak: 同步失败", &format!("同步到远程 {} 失败", name.split("@").last().unwrap()))?;
+                notifica::notify(
+                    "MineBak: 同步失败",
+                    &format!("同步到远程 {} 失败", name.split("@").last().unwrap()),
+                )?;
                 res = result;
             } else {
                 log::info!("Sync finished to {}", name);
@@ -117,7 +122,7 @@ impl CloudService {
                     )?
                     .error_for_status()?;
                 Ok(())
-            },
+            }
             Self::RClone { remote } => {
                 let mut tmp = env::temp_dir();
                 tmp.push("hash.tmp.ron");
@@ -168,7 +173,7 @@ impl CloudService {
                         .bytes()?,
                 )?;
                 Ok(())
-            },
+            }
             Self::RClone { remote } => {
                 std::process::Command::new("rclone")
                     .arg("copy")
@@ -199,7 +204,7 @@ impl CloudService {
                     .delete(&(endpoint.clone() + &remote_file))?
                     .error_for_status()?;
                 Ok(())
-            },
+            }
             Self::RClone { remote } => {
                 std::process::Command::new("rclone")
                     .arg("delete")
@@ -323,7 +328,7 @@ impl CloudService {
                         .unwrap()
                         .put(
                             ron::to_string(&hashs_empty)?,
-                            &(endpoint.to_string() + "minebak/hash.ron"),
+                            &(endpoint.to_string() + "minebak/backup/hash.ron"),
                         )?
                         .error_for_status()?;
                 }
