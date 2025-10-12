@@ -38,12 +38,12 @@
 
           cargoHash = nixpkgs.lib.fakeSha256;
 
-          nativeBuildInputs = [
-            pkgs.cargo-tauri.hook
-            pkgs.nodejs
-            pkgs.npmHooks.npmConfigHook
-            pkgs.pkg-config
-            pkgs.gobject-introspection
+          nativeBuildInputs = with pkgs;[
+            cargo-tauri.hook
+            nodejs
+            npmHooks.npmConfigHook
+            pkg-config
+            gobject-introspection
           ] ++ (with pkgs; lib.optionals stdenv.hostPlatform.isLinux [ wrapGAppsHook4 ]);
 
           buildInputs = (with pkgs; [

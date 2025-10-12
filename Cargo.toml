@@ -1,6 +1,0 @@
-[package]
-name = "minebak"
-version = "1.0.0-alpha"
-edition = "2024"
-
-[dependencies]
