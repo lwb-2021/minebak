@@ -17,7 +17,7 @@ const instance_type = ref(0)
 
 const on_add_instance_submit = async (event: any) => {
   const data = new FormData(event.target)
-  const result = await invoke("add_root",
+  return await invoke("add_root",
     {
       path: path.value,
       instanceType: Number(instance_type.value)

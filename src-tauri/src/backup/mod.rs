@@ -10,6 +10,7 @@ pub use instance::MinecraftInstance;
 pub use instance::MinecraftInstanceRoot;
 use tauri::State;
 
+use crate::errors::MyError;
 use crate::errors::Result;
 use crate::AppStateInner;
 use std::path::PathBuf;
@@ -26,9 +27,20 @@ pub async fn add_root(
         .lock()
         .unwrap()
         .instance_roots
-        .push(MinecraftInstanceRoot::new(root, unsafe {
-            std::mem::transmute(instance_type)
-        }));
+        .push(MinecraftInstanceRoot::new(
+            root,
+            match instance_type {
+                0 => MinecraftInstanceType::Normal,
+                1 => MinecraftInstanceType::VersionIsolated,
+                2 => MinecraftInstanceType::MultiMC,
+                i => {
+                    return Err(MyError::Other(format!(
+                        "Unsupported Minecraft instance type {}",
+                        i
+                    )))
+                }
+            },
+        ));
     rescan_saves(state).await
 }
 
