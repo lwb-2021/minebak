@@ -26,3 +26,4 @@ tauri-plugin-log = { version = "2", features = ["colored"] }
 tokio = "1.47.1"
 tauri-plugin-dialog = "2"
 thiserror = "2.0.17"
+tauri-plugin-store = "2"
