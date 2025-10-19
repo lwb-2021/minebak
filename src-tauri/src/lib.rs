@@ -56,6 +56,7 @@ pub fn run() {
                     )
                     .expect("App state serialization failed"),
                 );
+                store.save().expect("Failed to save to storge");
             }
         })
         .run(tauri::generate_context!())

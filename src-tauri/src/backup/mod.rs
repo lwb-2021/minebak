@@ -46,8 +46,12 @@ pub async fn add_root(
 
 #[tauri::command]
 pub async fn rescan_saves(state: State<'_, Mutex<AppStateInner>>) -> Result<()> {
-    for item in state.lock().unwrap().instance_roots.iter_mut() {
-        item.scan()?;
+    let instance_roots = &mut state.lock().unwrap().instance_roots;
+    for index in 0..instance_roots.len() {
+        if let Err(err) = instance_roots.get_mut(index).unwrap().scan() {
+            instance_roots.remove(index);
+            return Err(err);
+        }
     }
     Ok(())
 }
@@ -58,7 +62,6 @@ pub async fn list_instances(
 ) -> Result<Vec<MinecraftInstance>> {
     let mut result = Vec::new();
     for item in state.lock().unwrap().instance_roots.iter() {
-        println!("{:?}", result);
         result.extend(item.instances.clone());
     }
     Ok(result)
