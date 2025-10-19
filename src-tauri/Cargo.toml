@@ -24,3 +24,5 @@ log = { version = "0.4", features = ["std"] }
 tauri = { version = "2.8.5", features = ["tray-icon"] }
 tauri-plugin-log = { version = "2", features = ["colored"] }
 tokio = "1.47.1"
+tauri-plugin-dialog = "2"
+thiserror = "2.0.17"

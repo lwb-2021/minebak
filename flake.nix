@@ -7,21 +7,35 @@
     rust-overlay.url = "github:oxalica/rust-overlay";
   };
 
-  outputs = { self, nixpkgs, flake-utils, rust-overlay }:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+      rust-overlay,
+    }:
     let
       name = "minebak";
       version = "1.0.0-alpha";
     in
-    flake-utils.lib.eachDefaultSystem (system:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs {
           inherit system overlays;
         };
 
-        rustNightly = pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default.override {
-          extensions = [ "rust-src" ];
-        });
+        rustNightly = pkgs.rust-bin.selectLatestNightlyWith (
+          toolchain:
+          toolchain.default.override {
+            extensions = [
+              "rust-src"
+              "rust-analyzer"
+              "rustfmt"
+            ];
+          }
+        );
 
         npmDeps = pkgs.fetchNpmDeps {
           name = "${name}-${version}-npm-deps";
@@ -38,30 +52,38 @@
 
           cargoHash = nixpkgs.lib.fakeSha256;
 
-          nativeBuildInputs = with pkgs;[
-            cargo-tauri.hook
-            nodejs
-            npmHooks.npmConfigHook
-            pkg-config
-            gobject-introspection
-          ] ++ (with pkgs; lib.optionals stdenv.hostPlatform.isLinux [ wrapGAppsHook4 ]);
+          nativeBuildInputs =
+            with pkgs;
+            [
+              cargo-tauri.hook
+              nodejs
+              npmHooks.npmConfigHook
+              pkg-config
+              gobject-introspection
+            ]
+            ++ (with pkgs; lib.optionals stdenv.hostPlatform.isLinux [ wrapGAppsHook4 ]);
 
-          buildInputs = (with pkgs; [
-            at-spi2-atk
-            atkmm
-            cairo
-            gdk-pixbuf
-            glib
-            gtk3
-            harfbuzz
-            librsvg
-            libsoup_3
-            pango
-            webkitgtk_4_1
-            openssl
-          ]) ++ (with pkgs; lib.optionals stdenv.hostPlatform.isLinux [
-            glib-networking
-          ]);
+          buildInputs =
+            (with pkgs; [
+              at-spi2-atk
+              atkmm
+              cairo
+              gdk-pixbuf
+              glib
+              gtk3
+              harfbuzz
+              librsvg
+              libsoup_3
+              pango
+              webkitgtk_4_1
+              openssl
+            ])
+            ++ (
+              with pkgs;
+              lib.optionals stdenv.hostPlatform.isLinux [
+                glib-networking
+              ]
+            );
 
           cargoRoot = "src-tauri";
           buildAndTestSubdir = finalAttrs.cargoRoot;

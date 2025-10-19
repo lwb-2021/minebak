@@ -6,7 +6,7 @@ use crate::{
         base::{MinecraftInstanceMetadata, MinecraftInstanceType},
         save::MinecraftSave,
     },
-    errors::{err, ErrorCode, Result},
+    errors::{MyError, Result},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,7 +39,10 @@ impl MinecraftInstanceRoot {
     pub fn scan(&mut self) -> Result<()> {
         self.instances.append(&mut match &self.instances_type {
             &MinecraftInstanceType::MultiMC => Self::scan_multimc(self.root.clone()),
-            _ => err(ErrorCode::InvalidParameter, ""),
+            _ => Err(MyError::Other(format!(
+                "Unsupported instance type {:?}",
+                self.instances_type
+            ))),
         }?);
         Ok(())
     }

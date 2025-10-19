@@ -1,18 +1,41 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 
-import { Sidebar, SidebarItem } from 'vant';
+import { ref } from 'vue';
 const { t } = useI18n()
+
+const sidebar_active = ref(0)
+const theme = ref("dark")
+
+const items = [
+  {
+    label: t("home"),
+    to: "/",
+  },
+  {
+    label: t("saves"),
+    to: "/saves",
+  },
+  {
+    label: t("settings"),
+    to: "/settings",
+  }
+];
 
 </script>
 
 <template>
-  <Sidebar id="sidebar">
-    <SidebarItem :title="t('home')" to="/" />
-    <SidebarItem :title="t('saves')" to="/saves" />
-    <SidebarItem :title="t('settings')" to="/settings" />
-  </Sidebar>
-  <RouterView id="main" />
+  <div id="sidebar" class="py-2 rounded-xl bg-black/5 dark:bg-white/5">
+    <div class="p-2 text-center">TODO</div>
+    <div class="my-2 p-2 text-center hover:bg-black/5 dark:hover:bg-white/5" v-for="item in items">
+      <router-link :to="item.to">
+        {{ item.label }}
+      </router-link>
+    </div>
+  </div>
+  <div id="main" class="ml-2 p-6 rounded-xl bg-black/5 dark:bg-white/5">
+    <RouterView />
+  </div>
 </template>
 <style scoped>
 #sidebar {
@@ -21,7 +44,6 @@ const { t } = useI18n()
 
 #main {
   flex: 1 0 auto;
-  padding: 0 8px;
 }
 </style>
 

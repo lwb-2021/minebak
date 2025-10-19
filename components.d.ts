@@ -10,8 +10,13 @@ declare module 'vue' {
   export interface GlobalComponents {
     AboutView: typeof import('./src/components/AboutView.vue')['default']
     HomeView: typeof import('./src/components/HomeView.vue')['default']
+    Menu: typeof import('primevue/menu')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SavesView: typeof import('./src/components/SavesView.vue')['default']
     SettingsView: typeof import('./src/components/SettingsView.vue')['default']
+  }
+  export interface GlobalDirectives {
+    Ripple: typeof import('primevue/ripple')['default']
   }
 }

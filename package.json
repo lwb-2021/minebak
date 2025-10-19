@@ -9,8 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.1.14",
+    "@tauri-apps/plugin-dialog": "^2.4.0",
     "@tauri-apps/plugin-log": "^2.7.0",
-    "vant": "^4.9.21",
+    "tailwindcss": "^4.1.14",
     "vue": "^3.5.22",
     "vue-i18n": "^11.1.12",
     "vue-router": "^4.5.1"
