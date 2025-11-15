@@ -7,14 +7,14 @@ use crate::{
         save::MinecraftSave,
     },
     errors::{MyError, Result},
-    utils::{self, BACKUP_HOME},
+    utils::BACKUP_HOME,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MinecraftInstanceRoot {
     root: PathBuf,
     instances_type: MinecraftInstanceType,
-    pub(super) instances: HashMap<String, MinecraftInstance>,
+    pub instances: HashMap<String, MinecraftInstance>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

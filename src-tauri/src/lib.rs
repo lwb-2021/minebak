@@ -2,6 +2,7 @@
 
 mod backup;
 mod errors;
+mod tauri_backend;
 mod utils;
 
 use std::sync::Mutex;
@@ -43,10 +44,10 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            backup::add_root,
-            backup::rescan_saves,
-            backup::list_instances,
-            backup::run_instance_backup,
+            tauri_backend::add_root,
+            tauri_backend::rescan_saves,
+            tauri_backend::list_instances,
+            tauri_backend::run_instance_backup,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
