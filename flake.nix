@@ -103,6 +103,7 @@
           nativeBuildInputs = with pkgs; [
             pkg-config
             gobject-introspection
+            cargo-bloat
             rustNightly
             cargo-tauri
             nodejs
