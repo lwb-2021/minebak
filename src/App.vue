@@ -44,6 +44,7 @@ const items = [
 
 #main {
   flex: 1 0 auto;
+  width: 0;
 }
 </style>
 

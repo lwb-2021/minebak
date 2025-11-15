@@ -37,59 +37,65 @@
           }
         );
 
+        deps = with pkgs; [
+          at-spi2-atk
+          atkmm
+          cairo
+          gdk-pixbuf
+          glib
+          gtk3
+          harfbuzz
+          librsvg
+          libsoup_3
+          pango
+          webkitgtk_4_1
+          openssl
+        ];
+
         npmDeps = pkgs.fetchNpmDeps {
           name = "${name}-${version}-npm-deps";
           src = ./.;
-          hash = nixpkgs.lib.fakeSha256;
+          hash = "sha256-tRLxeOJAu8XMB49dzEiqcURkX+iMPzXoQgOQcvtl4j8=";
         };
 
       in
       {
-        packages.default = pkgs.rustPlatform.buildRustPackage (finalAttrs: {
-          inherit name version;
+        packages = rec {
+          minebak = pkgs.rustPlatform.buildRustPackage (finalAttrs: {
+            inherit name version;
 
-          src = ./.;
+            src = ./.;
 
-          cargoHash = nixpkgs.lib.fakeSha256;
+            cargoHash = "";
 
-          nativeBuildInputs =
-            with pkgs;
-            [
-              cargo-tauri.hook
-              nodejs
-              npmHooks.npmConfigHook
-              pkg-config
-              gobject-introspection
-            ]
-            ++ (with pkgs; lib.optionals stdenv.hostPlatform.isLinux [ wrapGAppsHook4 ]);
-
-          buildInputs =
-            (with pkgs; [
-              at-spi2-atk
-              atkmm
-              cairo
-              gdk-pixbuf
-              glib
-              gtk3
-              harfbuzz
-              librsvg
-              libsoup_3
-              pango
-              webkitgtk_4_1
-              openssl
-            ])
-            ++ (
+            nativeBuildInputs =
               with pkgs;
-              lib.optionals stdenv.hostPlatform.isLinux [
-                glib-networking
+              [
+                cargo-tauri.hook
+                nodejs
+                npmHooks.npmConfigHook
+                pkg-config
+                gobject-introspection
               ]
-            );
+              ++ (with pkgs; lib.optionals stdenv.hostPlatform.isLinux [ wrapGAppsHook4 ]);
 
-          cargoRoot = "src-tauri";
-          buildAndTestSubdir = finalAttrs.cargoRoot;
+            buildInputs =
+              deps
+              ++ (
+                with pkgs;
+                lib.optionals stdenv.hostPlatform.isLinux [
+                  glib-networking
+                ]
+              );
 
-          inherit npmDeps;
-        });
+            cargoRoot = "src-tauri";
+            buildAndTestSubdir = finalAttrs.cargoRoot;
+
+            inherit npmDeps;
+          });
+          default = minebak;
+
+        };
 
         devShells.default = pkgs.mkShell {
           inherit name;
@@ -102,21 +108,7 @@
             nodejs
           ];
 
-          buildInputs = with pkgs; [
-            at-spi2-atk
-            atkmm
-            cairo
-            gdk-pixbuf
-            glib
-            gtk3
-            harfbuzz
-            librsvg
-            libsoup_3
-            pango
-            webkitgtk_4_1
-            openssl
-          ];
-
+          buildInputs = deps;
           shellHook = ''
             export RUST_BACKTRACE=1
           '';

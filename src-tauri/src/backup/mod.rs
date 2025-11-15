@@ -1,6 +1,6 @@
 mod base;
+mod increasement;
 mod instance;
-mod nbt;
 mod save;
 
 #[allow(unused_imports)]
@@ -13,6 +13,7 @@ use tauri::State;
 use crate::errors::MyError;
 use crate::errors::Result;
 use crate::AppStateInner;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
@@ -59,10 +60,24 @@ pub async fn rescan_saves(state: State<'_, Mutex<AppStateInner>>) -> Result<()> 
 #[tauri::command]
 pub async fn list_instances(
     state: State<'_, Mutex<AppStateInner>>,
-) -> Result<Vec<MinecraftInstance>> {
-    let mut result = Vec::new();
+) -> Result<HashMap<String, MinecraftInstance>> {
+    let mut result = HashMap::new();
     for item in state.lock().unwrap().instance_roots.iter() {
         result.extend(item.instances.clone());
     }
     Ok(result)
+}
+
+#[tauri::command]
+pub async fn run_instance_backup(
+    name: String,
+    state: State<'_, Mutex<AppStateInner>>,
+) -> Result<()> {
+    let instance_roots = &state.lock().unwrap().instance_roots;
+    for instance_root in instance_roots.iter() {
+        if let Some(instance) = &instance_root.instances.get(&name) {
+            return instance.backup();
+        }
+    }
+    Err(MyError::Other(format!("Invaild name: {}", name)))
 }

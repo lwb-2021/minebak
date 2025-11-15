@@ -15,8 +15,7 @@ const loading = ref(true)
 const path = ref("")
 const instance_type = ref(0)
 
-const on_add_instance_submit = async (event: any) => {
-  const data = new FormData(event.target)
+const on_add_instance_submit = async () => {
   return await invoke("add_root",
     {
       path: path.value,
@@ -38,7 +37,7 @@ onMounted(async () => {
     </button>
   </div>
   <dialog ref="dialog_add_instance">
-    <form method="dialog" class="p-4" @submit="on_add_instance_submit">
+    <form method="dialog" class="p-4">
       <div class="my-2 mx-4 text-lg">
         输入实例的上一级路径（一般为.minecraft文件夹）
       </div>
@@ -57,6 +56,7 @@ onMounted(async () => {
           <label class="w-20 py-1" for="path">{{ t("instance-parent") }}</label>
           <input id="path" class="grow" v-model="path" />
           <button type="button" @click="async () => {
+            // @ts-ignore
             path = await open({
               multiple: false,
               directory: true,
@@ -67,15 +67,15 @@ onMounted(async () => {
       <div class="flex my-2 gap-4">
         <button class="shrink w-24" type="button">填充默认</button>
         <div class="grow" />
-        <button class="shrink w-24">{{ t("confirm") }}</button>
+        <button class="shrink w-24" @click="on_add_instance_submit">{{ t("confirm") }}</button>
         <button class="shrink w-24">{{ t("cancel") }}</button>
       </div>
     </form>
   </dialog>
 
   <div v-if="loading">Loading</div>
-  <div v-else class="grid grid-cols-3 gap-4">
-    <InstanceCard v-for="item in data" />
+  <div v-else class="grid grid-cols-3 gap-4 py-4">
+    <InstanceCard v-for="(value, name) in data" :name :meta="value" />
   </div>
 </template>
 

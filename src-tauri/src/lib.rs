@@ -2,6 +2,7 @@
 
 mod backup;
 mod errors;
+mod utils;
 
 use std::sync::Mutex;
 
@@ -31,7 +32,11 @@ pub fn run() {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
+                        .level(if cfg!(debug_assertions) {
+                            log::LevelFilter::Debug
+                        } else {
+                            log::LevelFilter::Info
+                        })
                         .build(),
                 )?;
             }
@@ -40,7 +45,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             backup::add_root,
             backup::rescan_saves,
-            backup::list_instances
+            backup::list_instances,
+            backup::run_instance_backup,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
