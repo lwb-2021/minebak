@@ -5,14 +5,15 @@ description = "A tool to backup your Minecraft saves"
 authors = ["lwb-2021"]
 license = ""
 repository = "https://github.com/lwb-2021/minebak"
-edition = "2021"
-rust-version = "1.77.2"
+edition = "2024"
+rust-version = "1.85.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
+
 
 [build-dependencies]
 tauri-build = { version = "2.4.1", features = [] }
@@ -31,3 +32,6 @@ crab_nbt = "0.2.11"
 walkdir = "2.5.0"
 sha256 = "1.6.0"
 dirs = "6.0.0"
+clap = { version = "4.5.51", features = ["derive"] }
+file-lock = "2.1.11"
+env_logger = "0.11.8"

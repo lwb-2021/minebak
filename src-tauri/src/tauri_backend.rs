@@ -1,14 +1,26 @@
+use crate::AppStateInner;
 use crate::backup::MinecraftInstance;
 use crate::backup::MinecraftInstanceRoot;
 use crate::backup::MinecraftInstanceType;
 use crate::errors::MyError;
 use crate::errors::Result;
-use crate::AppStateInner;
+use serde::Serialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::State;
 
+impl Serialize for MyError {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let err = self.to_string();
+        log::error!("{}", err);
+        log::error!("Sending error to frontend");
+        serializer.serialize_str(&err)
+    }
+}
 #[tauri::command]
 pub async fn add_root(
     path: String,
@@ -30,7 +42,7 @@ pub async fn add_root(
                     return Err(MyError::Other(format!(
                         "Unsupported Minecraft instance type {}",
                         i
-                    )))
+                    )));
                 }
             },
         ));

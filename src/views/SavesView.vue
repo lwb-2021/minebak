@@ -32,6 +32,8 @@ onMounted(async () => {
 <template>
   <div class="grid grid-cols-4 gap-4">
     <input class="col-span-3" :placeholder="t('search')"></input>
+
+    <!-- @vue-expect-error -->
     <button class="" @click="() => this.$refs.dialog_add_instance.showModal()">
       添加实例
     </button>
@@ -75,6 +77,7 @@ onMounted(async () => {
 
   <div v-if="loading">Loading</div>
   <div v-else class="grid grid-cols-3 gap-4 py-4">
+    <!-- @vue-expect-error -->
     <InstanceCard v-for="(value, name) in data" :name :meta="value" />
   </div>
 </template>

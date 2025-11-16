@@ -1,7 +1,8 @@
 use crate::{
-    backup::{self, increasement::Version},
+    backup::increasement::Version,
     errors::{MyError, Result},
 };
+use file_lock::{FileLock, FileOptions};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
 
@@ -21,6 +22,14 @@ impl MinecraftSave {
         })
     }
     pub fn backup(&self, mode: u8) -> Result<()> {
+        log::info!("Acquiring backup lock");
+        let lock = FileLock::lock(
+            std::env::temp_dir().join("minebak-backup.lock"),
+            true,
+            FileOptions::new(),
+        )
+        .unwrap();
+        log::info!("File lock acquired");
         let versions = self.load_backups()?;
         if versions.is_empty() {
             Version::create_full(self.path.clone(), self.backup_path.clone())?;
@@ -40,7 +49,10 @@ impl MinecraftSave {
                 todo!()
             }
             i => Err(MyError::Other(format!("Unexpected backup mode"))),
-        }
+        }?;
+        log::info!("Backup lock released");
+        lock.unlock().unwrap();
+        Ok(())
     }
     fn load_backups(&self) -> Result<Vec<Version>> {
         if !self.backup_path.exists() {
